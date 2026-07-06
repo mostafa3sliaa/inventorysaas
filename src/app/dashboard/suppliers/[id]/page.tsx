@@ -454,7 +454,7 @@ export default function SupplierDetailsPage() {
                 <Plus className="w-5 h-5" />
                 <span>معاملة جديدة</span>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-3xl rounded-3xl" dir="rtl">
+              <DialogContent className="sm:max-w-3xl rounded-3xl max-h-[90vh] overflow-y-auto flex flex-col" dir="rtl">
                 <DialogHeader>
                   <DialogTitle className="text-2xl font-black text-gray-900">تسجيل فاتورة مشتريات أو معاملة</DialogTitle>
                 </DialogHeader>
@@ -724,7 +724,7 @@ export default function SupplierDetailsPage() {
                             <DialogTrigger render={<Button variant="ghost" size="icon" className="text-indigo-600 hover:bg-indigo-50" />}>
                               <FileText className="w-5 h-5" />
                             </DialogTrigger>
-                            <DialogContent className="sm:max-w-[500px]" dir="rtl">
+                            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto flex flex-col" dir="rtl">
                               <DialogHeader>
                                 <DialogTitle>تفاصيل المنتجات</DialogTitle>
                               </DialogHeader>

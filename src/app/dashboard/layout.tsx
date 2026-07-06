@@ -28,7 +28,8 @@ import {
   Bell,
   Moon,
   Sun,
-  CheckCheck
+  CheckCheck,
+  Wallet
 } from "lucide-react";
 
 export default function DashboardLayout({
@@ -45,15 +46,16 @@ export default function DashboardLayout({
 
 const navItems = [
   { href: "/dashboard", label: "الرئيسية", icon: LayoutDashboard, exact: true },
+  { href: "/dashboard/treasury", label: "الخزنة", icon: Wallet },
   { href: "/dashboard/suppliers", label: "الموردين", icon: Users },
   { href: "/dashboard/inventory", label: "المخزون", icon: Package },
-  { href: "/dashboard/orders", label: "الطلبات والشحن", icon: Truck },
+  { href: "/dashboard/orders", label: "الطلبات", icon: Truck },
   { href: "/dashboard/reports", label: "التقارير", icon: BarChart3 },
   { href: "/dashboard/settings", label: "الإعدادات", icon: Settings },
 ];
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
-  const { tenant, loading } = useTenant();
+  const { tenant, currentUser, loading } = useTenant();
   const { setTheme, theme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
@@ -143,7 +145,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-3">
           <ul className="space-y-1">
-            {navItems.map((item) => {
+            {navItems.filter((item) => {
+              if (item.href === "/dashboard") return true;
+              if (currentUser?.role === "admin") return true;
+              if (Array.isArray(currentUser?.permissions?.pages) && currentUser.permissions.pages.includes(item.href)) return true;
+              return false;
+            }).map((item) => {
               const active = isActive(item.href, item.exact);
               return (
                 <li key={item.href}>
@@ -285,7 +292,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
       {/* ─── Mobile Bottom Navigation ─── */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-[#0F172A] border-t border-gray-100 dark:border-white/[0.06] z-50 px-2 py-1.5 flex justify-around items-center">
-        {[navItems[0], navItems[2], navItems[3], navItems[4]].map((item) => {
+        {[navItems[0], navItems[2], navItems[3], navItems[4]].filter((item) => {
+          if (item.href === "/dashboard") return true;
+          if (currentUser?.role === "admin") return true;
+          if (Array.isArray(currentUser?.permissions?.pages) && currentUser.permissions.pages.includes(item.href)) return true;
+          return false;
+        }).map((item) => {
           const active = isActive(item.href, item.exact);
           return (
             <Link 

@@ -85,7 +85,7 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-[#1E293B] rounded-xl border border-gray-100 dark:border-white/[0.06]">
+      <div className="bg-white dark:bg-[#1E293B] rounded-xl border border-gray-100 dark:border-white/[0.06] overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -131,7 +131,7 @@ export default function InventoryPage() {
                               <span className="font-semibold text-sm text-gray-900 dark:text-gray-200">
                                 {variantName}
                               </span>
-                              {v.sku && <span className="text-[10px] text-gray-400 font-mono bg-white dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] px-1.5 py-0.5 rounded">SKU: {v.sku}</span>}
+
                               {v.barcode && <span className="text-[10px] text-gray-400 font-mono bg-white dark:bg-white/[0.06] border border-gray-200 dark:border-white/[0.08] px-1.5 py-0.5 rounded">{v.barcode}</span>}
                             </div>
                             

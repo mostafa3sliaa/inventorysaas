@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTenant } from "@/components/shared/TenantProvider";
+import { logActivity } from "@/utils/logger";
 
 function ProductSelect({ 
   value, 
@@ -96,7 +97,7 @@ function ProductSelect({
 }
 
 export default function OrdersPage() {
-  const { tenant } = useTenant();
+  const { tenant, currentUser } = useTenant();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
@@ -134,6 +135,8 @@ export default function OrdersPage() {
   const [newNotes, setNewNotes] = useState("");
     const [shippingLoss, setShippingLoss] = useState("");
   const [partialModalOpen, setPartialModalOpen] = useState(false);
+  const [newAmountPaid, setNewAmountPaid] = useState("");
+  const [newReturnedItems, setNewReturnedItems] = useState<any[]>([]);
   const [partialOrder, setPartialOrder] = useState<any>(null);
   const [partialItems, setPartialItems] = useState<any[]>([]);
   const [partialNewTotal, setPartialNewTotal] = useState("");
@@ -163,6 +166,9 @@ export default function OrdersPage() {
         notes: notes
       }).eq("id", partialOrder.id);
       
+      const serialPartial = String(orders.length - orders.findIndex(o => o.id === partialOrder.id)).padStart(4, '0');
+      const orderNamePartial = `${tenant?.name || 'ميتش'} #${serialPartial}`;
+      logActivity(supabase, tenant?.id, currentUser?.id, "تأكيد استلام جزئي", "order", partialOrder.id, { order_name: orderNamePartial });
       toast.success("تم تأكيد الاستلام الجزئي بنجاح!");
       setPartialModalOpen(false);
       setExpandedOrderId(null);
@@ -182,6 +188,8 @@ export default function OrdersPage() {
       return;
     }
     setShippingLoss("");
+    setNewAmountPaid("");
+    setNewReturnedItems(order.order_items?.map((i: any) => ({ id: i.product_variant_id, quantity: 0, max: i.quantity, title: i.product_variants?.products?.name || "منتج" })) || []);
     setSelectedOrder(order);
     setNewStatus(order.status || "pending");
     setNewPaymentStatus(order.payment_status || "unpaid");
@@ -252,16 +260,10 @@ export default function OrdersPage() {
           }
         }
 
-        // Process payment update if selected
-        if (bulkPaymentStatus) {
-          await supabase.from("orders").update({ payment_status: bulkPaymentStatus }).in("id", selectedOrderIds);
-        }
-
         toast.success("تم تطبيق التغييرات على الطلبات المحددة بنجاح");
         fetchOrders();
         setSelectedOrderIds([]);
         setBulkStatus("");
-        setBulkPaymentStatus("");
         setIsSubmitting(false);
       }
     });
@@ -272,6 +274,11 @@ export default function OrdersPage() {
   useEffect(() => {
     fetchOrders();
     fetchProducts();
+    const urlParams = new URLSearchParams(window.location.search);
+    const search = urlParams.get('search');
+    if (search) {
+      setSearchTerm(search);
+    }
   }, []);
 
   const fetchProducts = async () => {
@@ -429,6 +436,9 @@ export default function OrdersPage() {
       }
     }
 
+    const newSerial = String(orders.length + 1).padStart(4, '0');
+    const orderNameAdd = `${tenant?.name || 'ميتش'} #${newSerial}`;
+    logActivity(supabase, tenant?.id, currentUser?.id, "إنشاء طلب جديد", "order", order.id, { order_name: orderNameAdd });
     toast.success("تم إضافة الطلب بنجاح");
     setIsOpen(false);
     fetchOrders();
@@ -463,62 +473,38 @@ export default function OrdersPage() {
     setLoading(false);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (order: any) => {
+    const status = order.status;
+    const payment = order.payment_status;
+
+    if (status === "delivered" && payment === "partial") {
+      return <span className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-xs font-bold">توصيل جزئي</span>;
+    }
+
     switch(status) {
-      case "pending": 
-        return <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold">في المخزن</span>;
-      case "shipped": 
-        return <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-bold">في شركة الشحن</span>;
-      case "delivered": 
-        return <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold">تم التوصيل ✅</span>;
-      case "returned_inventory": 
-        return <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-bold">مرتجع دخل المخزن</span>;
-      case "returned_shipping": 
-        return <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-xs font-bold">مرتجع في شركة الشحن</span>;
+      case "pending": return <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold">في الانتظار</span>;
+      case "shipped": return <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-bold">في الشحن</span>;
+      case "delivered": return <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold">تم التوصيل</span>;
+      case "partially_delivered": return <span className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-xs font-bold">توصيل جزئي</span>;
       case "cancelled": 
-        return <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold">ملغي في شركة الشحن</span>;
-      default: 
-        return <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-xs font-bold">{status}</span>;
+      case "returned_inventory":
+      case "returned_shipping":
+        return <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold">ملغي / مرتجع</span>;
+      default: return <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-xs font-bold">{status}</span>;
     }
   };
 
-  const getPaymentStatusBadge = (status: string) => {
-    switch(status) {
-      case "paid": 
-        return <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold">✅ مدفوع</span>;
-      case "partial": 
-        return <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold">⏳ مدفوع جزئياً</span>;
-      case "refunded": 
-        return <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold">🔄 مسترد</span>;
-      case "unpaid": 
-      default: 
-        return <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-xs font-bold">❌ غير مدفوع</span>;
-    }
-  };
+  const getPaymentStatusBadge = (status: string) => { return null; };
 
   const handleUpdateStatus = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedOrder) return;
-    
-    if (newStatus === "partial") {
-      setPartialOrder(selectedOrder);
-      setPartialItems(selectedOrder.order_items?.map((item: any) => ({
-        ...item,
-        qty_returned: 0
-      })) || []);
-      setPartialNewTotal(selectedOrder.total_amount || "");
-      setPartialModalOpen(true);
-      return;
-    }
-    
     setIsSubmitting(true);
 
-    const isStockDeducted = (status: string) => !["returned_inventory", "cancelled"].includes(status);
-    const currentDeducted = isStockDeducted(selectedOrder.status || "pending");
-    const finalDeducted = isStockDeducted(newStatus);
+    let finalPaymentStatus = selectedOrder.payment_status;
+    let computedNotes = newNotes;
 
-    if (currentDeducted && !finalDeducted) {
-      // Restore stock
+    if (newStatus === "cancelled" || newStatus === "returned_inventory" || newStatus === "returned_shipping") {
       const items = selectedOrder.order_items;
       for (const item of items) {
         const { data: variant } = await supabase.from("product_variants").select("stock_quantity").eq("id", item.product_variant_id).single();
@@ -526,39 +512,60 @@ export default function OrdersPage() {
           await supabase.from("product_variants").update({ stock_quantity: Number(variant.stock_quantity) + Number(item.quantity) }).eq("id", item.product_variant_id);
         }
       }
-    } else if (!currentDeducted && finalDeducted) {
-      // Deduct stock
-      const items = selectedOrder.order_items;
-      for (const item of items) {
-        const { data: variant } = await supabase.from("product_variants").select("stock_quantity").eq("id", item.product_variant_id).single();
-        if (variant) {
-          await supabase.from("product_variants").update({ stock_quantity: Math.max(0, Number(variant.stock_quantity) - Number(item.quantity)) }).eq("id", item.product_variant_id);
+      
+      if (shippingLoss && Number(shippingLoss) > 0) {
+        await supabase.from("transactions").insert({
+          tenant_id: tenant?.id,
+          type: "expense",
+          amount: Number(shippingLoss),
+          category: "مصروفات",
+          description: `خسارة شحن للطلب رقم ${selectedOrder.id.substring(0,6)}`,
+          source: "order",
+          transaction_date: new Date().toISOString()
+        });
+        computedNotes = computedNotes ? `${computedNotes} | خسارة شحن: ${shippingLoss}` : `خسارة شحن: ${shippingLoss}`;
+      }
+    } 
+    else if (newStatus === "partially_delivered") {
+      finalPaymentStatus = "partial";
+      for (const ret of newReturnedItems) {
+        if (ret.quantity > 0) {
+          const { data: variant } = await supabase.from("product_variants").select("stock_quantity").eq("id", ret.id).single();
+          if (variant) {
+            await supabase.from("product_variants").update({ stock_quantity: Number(variant.stock_quantity) + Number(ret.quantity) }).eq("id", ret.id);
+          }
         }
       }
+
+      if (newAmountPaid && Number(newAmountPaid) > 0) {
+        await supabase.from("transactions").insert({
+          tenant_id: tenant?.id,
+          type: "income",
+          amount: Number(newAmountPaid),
+          category: "مبيعات",
+          description: `تحصيل جزئي للطلب رقم ${selectedOrder.id.substring(0,6)}`,
+          source: "order",
+          transaction_date: new Date().toISOString()
+        });
+        computedNotes = computedNotes ? `${computedNotes} | تحصيل جزئي: ${newAmountPaid}` : `تحصيل جزئي: ${newAmountPaid}`;
+      }
+    } 
+    else if (newStatus === "delivered") {
+      finalPaymentStatus = "paid";
     }
 
-    const orderSource = ["returned_inventory", "pending"].includes(newStatus) ? "stock_in_inventory" : "stock_in_shipping";
+    const orderSource = ["cancelled", "returned_inventory", "pending"].includes(newStatus) ? "stock_in_inventory" : "stock_in_shipping";
     
-    // We update the notes as well
-    const updateObj: any = { status: newStatus, payment_status: newPaymentStatus, source: orderSource };
-    if (newNotes !== undefined) {
-      updateObj.notes = newNotes;
-    }
+    let dbStatus = newStatus;
+    if (newStatus === "cancelled") dbStatus = "returned_inventory";
+    if (newStatus === "partially_delivered") dbStatus = "delivered";
 
-    // Shipping loss logic
-    if (["returned_inventory", "cancelled"].includes(newStatus) && shippingLoss && Number(shippingLoss) > 0) {
-      await supabase.from("expenses").insert({
-        amount: Number(shippingLoss),
-        description: `مصاريف شحن مرتجعات لطلب #${selectedOrder.id}`,
-        category: "shipping_loss",
-        date: new Date().toISOString().split('T')[0],
-        tenant_id: tenant?.id
-      });
+    const updateObj: any = { status: dbStatus, payment_status: finalPaymentStatus, source: orderSource };
+    if (computedNotes) {
+      updateObj.notes = computedNotes;
     }
-    
     const { error: orderError } = await supabase.from("orders").update(updateObj).eq("id", selectedOrder.id);
     if (orderError) {
-      toast.error("حدث خطأ أثناء تحديث الطلب: تأكد من إضافة عمود notes في قاعدة البيانات");
       console.error(orderError);
       setIsSubmitting(false);
       return;
@@ -566,28 +573,20 @@ export default function OrdersPage() {
 
     if (newCourier || newTracking) {
       const { data: existingShipment, error: checkError } = await supabase.from("shipments").select("id").eq("order_id", selectedOrder.id).maybeSingle();
-      if (checkError) {
-        toast.error("خطأ في التحقق من الشحنة: " + checkError.message);
-      } else if (existingShipment) {
-        const { error: updateError } = await supabase.from("shipments").update({ courier: newCourier, tracking_number: newTracking || null }).eq("id", existingShipment.id);
-        if (updateError) {
-          console.error("Update shipment error:", updateError);
-          toast.error("حدث خطأ أثناء حفظ شركة الشحن: " + updateError.message);
-        }
-      } else {
-        const { error: insertError } = await supabase.from("shipments").insert({ 
+      if (!checkError && existingShipment) {
+        await supabase.from("shipments").update({ courier: newCourier, tracking_number: newTracking || null }).eq("id", existingShipment.id);
+      } else if (!checkError) {
+        await supabase.from("shipments").insert({ 
           order_id: selectedOrder.id, 
           courier: newCourier, 
           tracking_number: newTracking || null
         });
-        if (insertError) {
-          console.error("Insert shipment error:", insertError);
-          toast.error("حدث خطأ أثناء حفظ شركة الشحن: تأكد من التحديث");
-        }
       }
     }
     
-    toast.success("تم تحديث حالة الطلب بنجاح");
+    const serialStatus = String(orders.length - orders.findIndex(o => o.id === selectedOrder.id)).padStart(4, '0');
+    const orderNameStatus = `${tenant?.name || 'ميتش'} #${serialStatus}`;
+    logActivity(supabase, tenant?.id, currentUser?.id, `تحديث حالة الطلب إلى: ${getStatusText(dbStatus)}`, "order", selectedOrder.id, { order_name: orderNameStatus });
     setExpandedOrderId(null);
     fetchOrders();
     setIsSubmitting(false);
@@ -601,12 +600,16 @@ export default function OrdersPage() {
       onConfirm: async () => {
         // Update local state instantly
         setOrders((prev) => prev.map(o => o.id === order.id ? { ...o, is_deleted: true } : o));
+        setSelectedOrderIds(prev => prev.filter(id => id !== order.id));
 
         const { error } = await supabase.from("orders").update({ is_deleted: true }).eq("id", order.id);
         if (error) {
           toast.error("فشل في حذف الطلب");
           fetchOrders(); // rollback on error
         } else {
+          const serialDel = String(orders.length - orders.findIndex(o => o.id === order.id)).padStart(4, '0');
+          const orderNameDel = `${tenant?.name || 'ميتش'} #${serialDel}`;
+          logActivity(supabase, tenant?.id, currentUser?.id, "نقل الطلب للمحذوفات", "order", order.id, { order_name: orderNameDel });
           toast.success("تم نقل الطلب لسجل المحذوفات");
         }
       }
@@ -621,6 +624,7 @@ export default function OrdersPage() {
       onConfirm: async () => {
         // Update local state instantly
         setOrders((prev) => prev.map(o => o.id === order.id ? { ...o, is_deleted: false } : o));
+        setSelectedOrderIds(prev => prev.filter(id => id !== order.id));
 
         const { error } = await supabase.from("orders").update({ is_deleted: false }).eq("id", order.id);
         if (error) {
@@ -628,6 +632,9 @@ export default function OrdersPage() {
           toast.error("فشل في استعادة الطلب: " + error.message);
           fetchOrders(); // rollback on error
         } else {
+          const serialRes = String(orders.length - orders.findIndex(o => o.id === order.id)).padStart(4, '0');
+          const orderNameRes = `${tenant?.name || 'ميتش'} #${serialRes}`;
+          logActivity(supabase, tenant?.id, currentUser?.id, "استعادة الطلب من المحذوفات", "order", order.id, { order_name: orderNameRes });
           toast.success("تم استعادة الطلب بنجاح");
         }
       }
@@ -893,7 +900,7 @@ export default function OrdersPage() {
         </Button>
 
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogContent className="sm:max-w-[900px] border-0 shadow-2xl" dir="rtl">
+          <DialogContent className="sm:max-w-[900px] border-0 shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col" dir="rtl">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-indigo-700 dark:text-indigo-400 border-b pb-4">إضافة طلب جديد</DialogTitle>
               <DialogDescription className="text-gray-500 mt-2">
@@ -1074,18 +1081,27 @@ export default function OrdersPage() {
       </div>
 
       {selectedOrderIds.length > 0 && activeTab === "active" && (
-        <div className="bg-indigo-50 border border-indigo-200 text-indigo-800 px-4 py-3 rounded-lg flex items-center justify-between">
+        <div className="bg-indigo-50 border border-indigo-200 text-indigo-800 px-4 py-3 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0">
           <div className="font-bold flex items-center gap-2">
             <span className="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">{selectedOrderIds.length}</span>
             طلب محدد
           </div>
-          <div className="flex gap-2 items-center">
-            
+          <div className="flex flex-wrap justify-center sm:justify-end gap-2 items-center w-full sm:w-auto">
+            <select
+              className="h-9 px-3 rounded-md border border-gray-200 text-sm focus:outline-none"
+              value={bulkStatus}
+              onChange={(e) => setBulkStatus(e.target.value)}
+            >
+              <option value="">تغيير الحالة...</option>
+              <option value="pending">في الانتظار</option>
+              <option value="shipped">في الشحن</option>
+              <option value="delivered">تم التوصيل</option>
+            </select>
 
             <Button 
               size="sm" 
               onClick={handleBulkApply} 
-              disabled={isSubmitting || (!bulkStatus && !bulkPaymentStatus)} 
+              disabled={isSubmitting || !bulkStatus} 
               className="bg-indigo-600 hover:bg-indigo-700 h-9"
             >
               تطبيق
@@ -1103,7 +1119,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-[#1E293B] rounded-xl border border-gray-100 dark:border-white/[0.06]">
+      <div className="bg-white dark:bg-[#1E293B] rounded-xl border border-gray-100 dark:border-white/[0.06] overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -1175,13 +1191,53 @@ export default function OrdersPage() {
                                 value={newStatus}
                                 onChange={(e) => setNewStatus(e.target.value)}
                               >
-                                <option value="pending">قيد التجهيز</option>
-                                
+                                <option value="pending">في الانتظار</option>
+                                <option value="shipped">في الشحن</option>
                                 <option value="delivered">تم التوصيل</option>
-                                <option value="returned_inventory">مرتجع</option>
-                                
-                                
+                                <option value="partially_delivered">توصيل جزئي</option>
+                                <option value="cancelled">ملغي / مرتجع</option>
                               </select>
+                              {newStatus === "cancelled" && (
+                                <Input 
+                                  value={shippingLoss} 
+                                  onChange={(e) => setShippingLoss(e.target.value)} 
+                                  placeholder="خسارة الشحن" 
+                                  type="number"
+                                  className="h-8 w-32 text-xs px-2 border-red-200 focus-visible:ring-red-500 mt-1" 
+                                />
+                              )}
+                              {newStatus === "partially_delivered" && (
+                                <div className="flex flex-col gap-1 mt-1 p-2 bg-teal-50 border border-teal-100 rounded w-48 shadow-sm relative z-50">
+                                  <Input 
+                                    value={newAmountPaid} 
+                                    onChange={(e) => setNewAmountPaid(e.target.value)} 
+                                    placeholder="المبلغ المحصل" 
+                                    type="number"
+                                    className="h-8 text-xs px-2 border-teal-200" 
+                                  />
+                                  <div className="text-[10px] font-bold text-teal-800 mt-1 border-b border-teal-200 pb-1">القطع المرتجعة:</div>
+                                  <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+                                    {newReturnedItems.map((ritem, idx) => (
+                                      <div key={idx} className="flex items-center justify-between gap-1 text-[10px] bg-white p-1 rounded">
+                                        <span className="truncate flex-1" title={ritem.title}>{ritem.title}</span>
+                                        <input 
+                                          type="number" 
+                                          min="0" 
+                                          max={ritem.max} 
+                                          value={ritem.quantity}
+                                          onChange={(e) => {
+                                            const v = parseInt(e.target.value) || 0;
+                                            const copy = [...newReturnedItems];
+                                            copy[idx].quantity = v > ritem.max ? ritem.max : v;
+                                            setNewReturnedItems(copy);
+                                          }}
+                                          className="w-10 h-6 border rounded px-1 text-center"
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
 
                               {!["pending", "returned_inventory", "shipped", "returned_shipping", "cancelled", "delivered"].includes(newStatus) && (
                                 <select
@@ -1220,7 +1276,7 @@ export default function OrdersPage() {
                         </>
                       ) : (
                         <>
-                          <TableCell>{getStatusBadge(order.status)}</TableCell>
+                          <TableCell>{getStatusBadge(order)}</TableCell>
                           
                           <TableCell>{shipment.courier || "-"}</TableCell>
                           <TableCell dir="ltr" className="text-right">
@@ -1276,7 +1332,7 @@ export default function OrdersPage() {
       </div>
 
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="sm:max-w-[900px] w-[95vw]" dir="rtl">
+        <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[90vh] overflow-y-auto flex flex-col" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-indigo-900 border-b pb-4">تفاصيل الطلب</DialogTitle>
             <DialogDescription dir="ltr" className="text-right text-lg font-mono text-indigo-600 mt-2">
@@ -1360,61 +1416,9 @@ export default function OrdersPage() {
         </DialogContent>
       </Dialog>
       
-      {/* Partial Delivery Modal */}
-      <Dialog open={partialModalOpen} onOpenChange={setPartialModalOpen}>
-        <DialogContent className="max-w-md" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-orange-600">استلام جزئي للطلب #{partialOrder?.id}</DialogTitle>
-            <DialogDescription>
-              حدد الكميات المرتجعة التي لم يستلمها العميل. سيتم إعادتها للمخزن فوراً واعتبار باقي الطلب (مدفوع) و (مكتمل).
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2 border-b pb-4">
-              <Label>المنتجات المرتجعة:</Label>
-              {partialItems.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-2 bg-gray-50 p-2 rounded">
-                  <div className="flex-1 text-sm truncate">منتج (كمية: {item.quantity})</div>
-                  <div className="w-24">
-                    <Input 
-                      type="number" 
-                      min="0" 
-                      max={item.quantity} 
-                      value={item.qty_returned}
-                      onChange={e => {
-                        const newItems = [...partialItems];
-                        newItems[idx].qty_returned = Number(e.target.value);
-                        setPartialItems(newItems);
-                      }}
-                      placeholder="مرتجع"
-                      className="h-8 text-center"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div>
-              <Label className="text-indigo-700 font-bold">الإجمالي الجديد المحصل فعلياً (ج.م)</Label>
-              <Input 
-                type="number" 
-                value={partialNewTotal} 
-                onChange={e => setPartialNewTotal(e.target.value)}
-                className="mt-1 text-lg font-bold"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPartialModalOpen(false)}>إلغاء</Button>
-            <Button className="bg-orange-600 hover:bg-orange-700 text-white" onClick={handlePartialDeliverySubmit} disabled={isSubmitting}>
-              {isSubmitting ? "جاري الحفظ..." : "تأكيد الاستلام الجزئي"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Confirm Dialog */}
       <Dialog open={confirmDialog.isOpen} onOpenChange={(open) => !open && setConfirmDialog(prev => ({ ...prev, isOpen: false }))}>
-        <DialogContent className="sm:max-w-[400px]" dir="rtl">
+        <DialogContent className="sm:max-w-[400px] max-h-[90vh] overflow-y-auto flex flex-col" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">{confirmDialog.title}</DialogTitle>
           </DialogHeader>

@@ -106,7 +106,7 @@ export default function SuppliersPage() {
               <span className="font-bold text-md">إضافة مورد جديد</span>
             </Button>
           } />
-          <DialogContent className="sm:max-w-[425px] rounded-3xl" dir="rtl">
+          <DialogContent className="sm:max-w-[425px] rounded-3xl max-h-[90vh] overflow-y-auto flex flex-col" dir="rtl">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold text-gray-900">مورد جديد</DialogTitle>
               <DialogDescription className="text-md">
