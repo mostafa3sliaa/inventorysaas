@@ -1076,19 +1076,6 @@ export default function OrdersPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "all")}>
-            <SelectTrigger className="w-[200px] border-indigo-200">
-              <SelectValue placeholder="تصفية حسب الحالة" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{`بحث بالحالة (${orders.filter(o => activeTab === 'deleted' ? o.is_deleted : !o.is_deleted).length})`}</SelectItem>
-              <SelectItem value="pending">{`في الانتظار (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'pending').length})`}</SelectItem>
-              <SelectItem value="shipped">{`في الشحن (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'shipped').length})`}</SelectItem>
-              <SelectItem value="delivered">{`تم التوصيل (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'delivered').length})`}</SelectItem>
-              <SelectItem value="partially_delivered">{`توصيل جزئي (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'partially_delivered').length})`}</SelectItem>
-              <SelectItem value="cancelled">{`ملغي / مرتجع (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'cancelled').length})`}</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
@@ -1146,7 +1133,21 @@ export default function OrdersPage() {
               <TableHead className="text-right">رقم الطلب</TableHead>
               <TableHead className="text-right">العميل</TableHead>
               <TableHead className="text-right">الإجمالي (ج.م)</TableHead>
-              <TableHead className="text-right">الحالة</TableHead>
+              <TableHead className="text-right p-0">
+                <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "all")}>
+                  <SelectTrigger className="w-full border-none bg-transparent shadow-none font-bold text-gray-500 hover:text-gray-900 focus:ring-0 text-right px-4">
+                    <SelectValue placeholder="الحالة" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{`الحالة (${orders.filter(o => activeTab === 'deleted' ? o.is_deleted : !o.is_deleted).length})`}</SelectItem>
+                    <SelectItem value="pending">{`في الانتظار (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'pending').length})`}</SelectItem>
+                    <SelectItem value="shipped">{`في الشحن (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'shipped').length})`}</SelectItem>
+                    <SelectItem value="delivered">{`تم التوصيل (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'delivered').length})`}</SelectItem>
+                    <SelectItem value="partially_delivered">{`توصيل جزئي (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'partially_delivered').length})`}</SelectItem>
+                    <SelectItem value="cancelled">{`ملغي / مرتجع (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'cancelled').length})`}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </TableHead>
               
               <TableHead className="text-right">شركة الشحن</TableHead>
               <TableHead className="text-right">رقم التتبع</TableHead>
