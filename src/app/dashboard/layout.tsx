@@ -78,30 +78,23 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const fetchAlerts = async () => {
-      const { data } = await supabase
-        .from("product_variants")
-        .select(`*, products(name)`);
-      
-      if (data) {
-        const lowStock = data.filter(v => v.stock_quantity <= (v.low_stock_threshold || 5));
+      const [
+        { data: stockData },
+        { count: pendingCount },
+        { data: suppliersData }
+      ] = await Promise.all([
+        supabase.from("product_variants").select(`*, products(name)`),
+        supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "pending").eq("is_deleted", false),
+        supabase.from('suppliers').select('balance').gt('balance', 0)
+      ]);
+
+      if (stockData) {
+        const lowStock = stockData.filter(v => v.stock_quantity <= (v.low_stock_threshold || 5));
         setLowStockVariants(lowStock);
       }
-
-      const { count: pendingCount } = await supabase
-        .from("orders")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "pending")
-        .eq("is_deleted", false);
-      
       if (pendingCount !== null) {
         setPendingOrdersCount(pendingCount);
       }
-
-      const { data: suppliersData } = await supabase
-        .from('suppliers')
-        .select('balance')
-        .gt('balance', 0);
-      
       if (suppliersData) {
         const dues = suppliersData.reduce((acc, curr) => acc + Number(curr.balance), 0);
         setSupplierDues(dues);
