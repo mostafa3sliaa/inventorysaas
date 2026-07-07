@@ -28,7 +28,6 @@ import {
   Bell,
   Moon,
   Sun,
-  CheckCheck,
   Wallet
 } from "lucide-react";
 
@@ -198,26 +197,19 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             </button>
             
             {/* Notifications */}
-            <DropdownMenu>
+            <DropdownMenu onOpenChange={(open) => { if (open) handleMarkAllAsRead() }}>
               <DropdownMenuTrigger className="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors relative outline-none">
                 <Bell className="w-[18px] h-[18px]" />
                 {notificationCount > 0 && !isRead && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
+                    {notificationCount > 9 ? '+9' : notificationCount}
+                  </span>
                 )}
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80" dir="rtl">
                 <DropdownMenuGroup>
                   <div className="flex justify-between items-center px-3 py-2">
                     <DropdownMenuLabel className="p-0 text-sm font-semibold">الإشعارات</DropdownMenuLabel>
-                    {notificationCount > 0 && !isRead && (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleMarkAllAsRead(); }}
-                        className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 flex items-center gap-1 font-medium transition-colors"
-                      >
-                        <CheckCheck className="w-3.5 h-3.5" />
-                        تم القراءة
-                      </button>
-                    )}
                   </div>
                   <DropdownMenuSeparator />
                   
