@@ -652,12 +652,13 @@ export default function OrdersPage() {
 
   const getStatusText = (status: string) => {
     switch(status) {
-      case "pending": return "في المخزن";
-      case "shipped": return "في شركة الشحن";
+      case "pending": return "في الانتظار";
+      case "shipped": return "في الشحن";
       case "delivered": return "تم التوصيل";
+      case "partially_delivered": return "توصيل جزئي";
       case "returned_inventory": return "مرتجع لمخزن التاجر";
       case "returned_shipping": return "مرتجع لشركة الشحن";
-      case "cancelled": return "ملغى";
+      case "cancelled": return "ملغي / مرتجع";
       default: return status;
     }
   };
@@ -1081,13 +1082,11 @@ export default function OrdersPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">الكل ({orders.filter(o => activeTab === 'deleted' ? o.is_deleted : !o.is_deleted).length})</SelectItem>
-              <SelectItem value="pending">في المخزن ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'pending').length})</SelectItem>
-              <SelectItem value="shipped">في شركة الشحن ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'shipped').length})</SelectItem>
+              <SelectItem value="pending">في الانتظار ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'pending').length})</SelectItem>
+              <SelectItem value="shipped">في الشحن ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'shipped').length})</SelectItem>
               <SelectItem value="delivered">تم التوصيل ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'delivered').length})</SelectItem>
               <SelectItem value="partially_delivered">توصيل جزئي ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'partially_delivered').length})</SelectItem>
-              <SelectItem value="returned_inventory">مرتجع للمخزن ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'returned_inventory').length})</SelectItem>
-              <SelectItem value="returned_shipping">مرتجع للشحن ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'returned_shipping').length})</SelectItem>
-              <SelectItem value="cancelled">ملغى ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'cancelled').length})</SelectItem>
+              <SelectItem value="cancelled">ملغي / مرتجع ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'cancelled').length})</SelectItem>
             </SelectContent>
           </Select>
         </div>
