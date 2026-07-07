@@ -1139,7 +1139,7 @@ export default function OrdersPage() {
                     <SelectValue placeholder="الحالة" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">{`الحالة (${orders.filter(o => activeTab === 'deleted' ? o.is_deleted : !o.is_deleted).length})`}</SelectItem>
+                    <SelectItem value="all">الحالة</SelectItem>
                     <SelectItem value="pending">{`في الانتظار (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'pending').length})`}</SelectItem>
                     <SelectItem value="shipped">{`في الشحن (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'shipped').length})`}</SelectItem>
                     <SelectItem value="delivered">{`تم التوصيل (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'delivered').length})`}</SelectItem>
