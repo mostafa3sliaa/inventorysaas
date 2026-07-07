@@ -1453,19 +1453,24 @@ export default function OrdersPage() {
                     <span className="truncate flex-1 text-sm font-medium" title={ritem.title}>{ritem.title}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-500">من أصل {ritem.max}</span>
-                      <Input 
-                        type="number" 
-                        min="0" 
-                        max={ritem.max} 
-                        value={ritem.qty_returned}
-                        onChange={(e) => {
-                          const v = parseInt(e.target.value) || 0;
+                      <Select 
+                        value={ritem.qty_returned.toString()}
+                        onValueChange={(val) => {
+                          const v = parseInt(val) || 0;
                           const copy = [...partialItems];
-                          copy[idx].qty_returned = v > ritem.max ? ritem.max : v;
+                          copy[idx].qty_returned = v;
                           setPartialItems(copy);
                         }}
-                        className="w-16 h-8 text-center border-teal-100 focus-visible:ring-teal-500"
-                      />
+                      >
+                        <SelectTrigger className="w-20 h-8 text-center border-teal-100 focus:ring-teal-500">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: ritem.max + 1 }).map((_, i) => (
+                            <SelectItem key={i} value={i.toString()}>{i}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 ))}
