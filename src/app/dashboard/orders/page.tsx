@@ -290,9 +290,16 @@ export default function OrdersPage() {
   };
 
   const filteredOrders = orders.filter((order) => {
+    const isPhoneSearch = /^[\+\d\s]+$/.test(searchTerm.trim());
+    const cleanSearchTerm = searchTerm.replace(/\D/g, '').replace(/^(20|0)+/, '');
+    const cleanPhone = (order.customers?.phone || "").replace(/\D/g, '').replace(/^(20|0)+/, '');
+    
+    const phoneMatch = (order.customers?.phone || "").includes(searchTerm) || 
+                       (isPhoneSearch && cleanSearchTerm.length > 0 && cleanPhone.includes(cleanSearchTerm));
+
     const searchMatch = (order.id || "").toString().toLowerCase().includes(searchTerm.toLowerCase()) || 
            (order.customers?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-           (order.customers?.phone || "").includes(searchTerm);
+           phoneMatch;
            
     const statusMatch = statusFilter === "all" || order.status === statusFilter;
            
