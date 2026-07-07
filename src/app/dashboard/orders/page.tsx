@@ -129,6 +129,7 @@ export default function OrdersPage() {
 
   const [activeTab, setActiveTab] = useState("active");
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const [bulkStatus, setBulkStatus] = useState("");
   const [bulkPaymentStatus, setBulkPaymentStatus] = useState("");
@@ -292,11 +293,13 @@ export default function OrdersPage() {
            (order.customers?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
            (order.customers?.phone || "").includes(searchTerm);
            
+    const statusMatch = statusFilter === "all" || order.status === statusFilter;
+           
     const isDeleted = order.is_deleted === true;
     if (activeTab === "deleted") {
-      return isDeleted && searchMatch;
+      return isDeleted && searchMatch && statusMatch;
     } else {
-      return !isDeleted && searchMatch;
+      return !isDeleted && searchMatch && statusMatch;
     }
   });
 
@@ -1062,14 +1065,31 @@ export default function OrdersPage() {
             سجل المحذوفات
           </button>
         </div>
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
-          <Input 
-            placeholder="ابحث بالاسم، الهاتف، أو رقم الطلب..." 
-            className="pr-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex gap-2 w-full max-w-xl">
+          <div className="relative flex-1">
+            <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
+            <Input 
+              placeholder="ابحث بالاسم، الهاتف، أو رقم الطلب..." 
+              className="pr-9"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "all")}>
+            <SelectTrigger className="w-[200px] border-indigo-200">
+              <SelectValue placeholder="تصفية حسب الحالة" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">الكل ({orders.filter(o => activeTab === 'deleted' ? o.is_deleted : !o.is_deleted).length})</SelectItem>
+              <SelectItem value="pending">في المخزن ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'pending').length})</SelectItem>
+              <SelectItem value="shipped">في شركة الشحن ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'shipped').length})</SelectItem>
+              <SelectItem value="delivered">تم التوصيل ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'delivered').length})</SelectItem>
+              <SelectItem value="partially_delivered">توصيل جزئي ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'partially_delivered').length})</SelectItem>
+              <SelectItem value="returned_inventory">مرتجع للمخزن ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'returned_inventory').length})</SelectItem>
+              <SelectItem value="returned_shipping">مرتجع للشحن ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'returned_shipping').length})</SelectItem>
+              <SelectItem value="cancelled">ملغى ({orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'cancelled').length})</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
