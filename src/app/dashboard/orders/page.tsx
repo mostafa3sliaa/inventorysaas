@@ -393,9 +393,10 @@ export default function OrdersPage() {
     (p.product_variants || []).map((v: any) => ({
       id: v.id,
       productName: p.name,
-      variantName: v.size,
+      variantName: [v.size, v.color].filter(c => c && c !== "-").join(" / ") || "أساسي",
       price: v.selling_price,
-      stock_quantity: v.stock_quantity
+      stock_quantity: v.stock_quantity,
+      cost_price: v.normal_cost
     }))
   );
 
@@ -1102,7 +1103,7 @@ export default function OrdersPage() {
           onOpenChange={setExchangeOpen}
           order={exchangeOrder}
           tenantId={tenant?.id}
-          allVariants={products}
+          allVariants={allVariants}
           onSuccess={fetchOrders}
         />
         
