@@ -10,13 +10,17 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Plus, Search, Trash2, Edit, Eye, Printer, Truck, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Search, Filter, Printer, ShoppingBag, Eye, Trash2, Edit, ArrowRightLeft, Truck, Check, ChevronsUpDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarIcon, ArrowLeftRight } from "lucide-react";
+import { format } from "date-fns";
+import { ar } from "date-fns/locale";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/utils/supabase/client";
+import ExchangeModal from "./ExchangeModal";
 import { toast } from "sonner";
 
 import {
@@ -120,6 +124,63 @@ export default function OrdersPage() {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [editingOrder, setEditingOrder] = useState<any>(null);
+  const [exchangeOpen, setExchangeOpen] = useState(false);
+  const [exchangeOrder, setExchangeOrder] = useState<any>(null);
+  
+  const handleOpenEdit = (order: any) => {
+    if (order.status === 'returned_inventory') {
+      return toast.error("لا يمكن تعديل طلب مرتجع للمخزن");
+    }
+    setEditingOrder(order);
+    setCustomerName(order.customers?.name || "");
+    setCustomerPhone(order.customers?.phone || "");
+    setCustomerCity(order.customers?.city || "");
+    setCustomerAddress(order.customers?.address || "");
+    if (order.order_items && order.order_items.length > 0) {
+      setOrderItems(order.order_items.map((item: any) => ({
+        variantId: item.product_variant_id,
+        quantity: item.quantity,
+        unitPrice: item.unit_price
+      })));
+    } else {
+      setOrderItems([{ variantId: "", quantity: 1, unitPrice: "" }]);
+    }
+    setShippingFee(order.shipping_fee || "");
+    setOrderNotes(order.notes || "");
+    setNewStatus(order.status || "pending");
+    setNewPaymentStatus(order.payment_status || "unpaid");
+    
+    // For shipping info
+    const shipment = Array.isArray(order.shipments) ? order.shipments[0] : order.shipments;
+    setNewCourier(shipment?.courier || "");
+    setNewTracking(shipment?.tracking_number || "");
+    
+    setIsOpen(true);
+  };
+
+  const handleOpenExchange = (order: any) => {
+    setExchangeOrder(order);
+    setExchangeOpen(true);
+  };
+  
+  const handleCloseDialog = () => {
+    setIsOpen(false);
+    setTimeout(() => {
+      setEditingOrder(null);
+      setCustomerName("");
+      setCustomerPhone("");
+      setCustomerCity("");
+      setCustomerAddress("");
+      setOrderItems([{ variantId: "", quantity: 1, unitPrice: "" }]);
+      setShippingFee("");
+      setOrderNotes("");
+      setNewStatus("pending");
+      setNewPaymentStatus("unpaid");
+      setNewCourier("");
+      setNewTracking("");
+    }, 200);
+  };
   
   const [newStatus, setNewStatus] = useState("pending");
   const [newPaymentStatus, setNewPaymentStatus] = useState("unpaid");
@@ -148,12 +209,22 @@ export default function OrdersPage() {
     if (!partialOrder || !partialNewTotal) return;
     setIsSubmitting(true);
     try {
-      // 1. Return stock for qty_returned
+      const totalReturned = partialItems.reduce((acc, item) => acc + item.qty_returned, 0);
+      if (totalReturned === 0) {
+        toast.error("يجب تحديد القطع المرتجعة للاستلام الجزئي");
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // 1. Return stock for qty_returned and update order_items
       for (const item of partialItems) {
         if (item.qty_returned > 0) {
-          const { data: variant } = await supabase.from("product_variants").select("stock_quantity").eq("id", item.product_variant_id).single();
-          if (variant) {
-            await supabase.from("product_variants").update({ stock_quantity: Number(variant.stock_quantity) + Number(item.qty_returned) }).eq("id", item.product_variant_id);
+          // Decrement order_items so the item is actually removed from the order
+          // The database trigger 'trigger_update_inventory_on_order' will automatically restore the stock
+          const { data: orderItem } = await supabase.from("order_items").select("id, quantity").eq("id", item.order_item_id).single();
+          if (orderItem) {
+            const newQty = Math.max(0, Number(orderItem.quantity) - Number(item.qty_returned));
+            await supabase.from("order_items").update({ quantity: newQty }).eq("id", orderItem.id);
           }
         }
       }
@@ -289,10 +360,10 @@ export default function OrdersPage() {
     setProducts(data || []);
   };
 
-  const filteredOrders = orders.filter((order) => {
-    const isPhoneSearch = /^[\+\d\s]+$/.test(searchTerm.trim());
-    const cleanSearchTerm = searchTerm.replace(/\D/g, '').replace(/^(20|0)+/, '');
-    const cleanPhone = (order.customers?.phone || "").replace(/\D/g, '').replace(/^(20|0)+/, '');
+  const isOrderMatchingSearchAndShipping = (order: any) => {
+    const isPhoneSearch = /^[\\+\\d\\s]+$/.test(searchTerm.trim());
+    const cleanSearchTerm = searchTerm.replace(/\\D/g, '').replace(/^(20|0)+/, '');
+    const cleanPhone = (order.customers?.phone || "").replace(/\\D/g, '').replace(/^(20|0)+/, '');
     
     const phoneMatch = (order.customers?.phone || "").includes(searchTerm) || 
                        (isPhoneSearch && cleanSearchTerm.length > 0 && cleanPhone.includes(cleanSearchTerm));
@@ -301,17 +372,21 @@ export default function OrdersPage() {
            (order.customers?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
            phoneMatch;
            
-    const statusMatch = statusFilter === "all" || order.status === statusFilter;
-           
     const courier = Array.isArray(order.shipments) ? order.shipments[0]?.courier : order.shipments?.courier;
     const shippingCompanyMatch = shippingCompanyFilter === "all" || courier === shippingCompanyFilter;
+    
+    return searchMatch && shippingCompanyMatch;
+  };
+
+  const filteredOrders = orders.filter((order) => {
+    const statusMatch = statusFilter === "all" || 
+                        order.status === statusFilter || 
+                        (statusFilter === "cancelled" && ["returned_inventory", "returned_shipping"].includes(order.status));
            
     const isDeleted = order.is_deleted === true;
-    if (activeTab === "deleted") {
-      return isDeleted && searchMatch && statusMatch && shippingCompanyMatch;
-    } else {
-      return !isDeleted && searchMatch && statusMatch && shippingCompanyMatch;
-    }
+    const tabMatch = activeTab === "deleted" ? isDeleted : !isDeleted;
+    
+    return tabMatch && statusMatch && isOrderMatchingSearchAndShipping(order);
   });
 
   const allVariants = products.flatMap(p => 
@@ -403,23 +478,48 @@ export default function OrdersPage() {
       customerId = customer.id;
     }
 
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .insert({
-        customer_id: customerId,
-        total_amount: finalTotalAmount,
-        status: "pending",
-        payment_status: "unpaid",
-        source: "stock_in_inventory",
-        tenant_id: tenant?.id,
-        notes: orderNotes
-      })
-      .select("id")
-      .single();
+    let orderId = editingOrder?.id;
 
-    if (orderError || !order) {
-      setIsSubmitting(false);
-      return;
+    if (editingOrder) {
+      // 1. Delete old items (DB trigger handles stock restoration automatically on DELETE)
+      await supabase.from("order_items").delete().eq("order_id", editingOrder.id);
+
+      // 3. Update Order
+      const { error: orderError } = await supabase
+        .from("orders")
+        .update({
+          customer_id: customerId,
+          total_amount: finalTotalAmount,
+          shipping_fee: Number(shippingFee) || 0,
+          notes: orderNotes
+        })
+        .eq("id", editingOrder.id);
+
+      if (orderError) {
+        setIsSubmitting(false);
+        return;
+      }
+    } else {
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          customer_id: customerId,
+          total_amount: finalTotalAmount,
+          status: "pending",
+          payment_status: "unpaid",
+          source: "stock_in_inventory",
+          tenant_id: tenant?.id,
+          shipping_fee: Number(shippingFee) || 0,
+          notes: orderNotes
+        })
+        .select("id")
+        .single();
+
+      if (orderError || !order) {
+        setIsSubmitting(false);
+        return;
+      }
+      orderId = order.id;
     }
 
     for (const item of orderItems) {
@@ -427,7 +527,7 @@ export default function OrdersPage() {
       await supabase
         .from("order_items")
         .insert({
-          order_id: order.id,
+          order_id: orderId,
           product_variant_id: item.variantId,
           quantity: Number(item.quantity),
           unit_price: Number(item.unitPrice)
@@ -449,20 +549,17 @@ export default function OrdersPage() {
       }
     }
 
-    // orderNameAdd is no longer generated with serials. We'll log the new id instead after insert.
-    logActivity(supabase, tenant?.id, currentUser?.id, "إنشاء طلب جديد", "order", order.id, { order_name: `#${order.id.substring(0,8)}` });
-    toast.success("تم إضافة الطلب بنجاح");
-    setIsOpen(false);
+    if (editingOrder) {
+      logActivity(supabase, tenant?.id, currentUser?.id, "تعديل الطلب", "order", orderId, { order_name: `#${orderId.substring(0,8)}` });
+      toast.success("تم تعديل الطلب بنجاح");
+    } else {
+      logActivity(supabase, tenant?.id, currentUser?.id, "إنشاء طلب جديد", "order", orderId, { order_name: `#${orderId.substring(0,8)}` });
+      toast.success("تم إضافة الطلب بنجاح");
+    }
+    
+    handleCloseDialog();
     fetchOrders();
     setIsSubmitting(false);
-    
-    setCustomerName("");
-    setCustomerPhone("");
-    setCustomerCity("");
-    setCustomerAddress("");
-    setOrderItems([{ variantId: "", quantity: 1, unitPrice: "" }]);
-    setShippingFee("");
-    setOrderNotes("");
   };
 
   const fetchOrders = async () => {
@@ -516,47 +613,79 @@ export default function OrdersPage() {
     let finalPaymentStatus = selectedOrder.payment_status;
     let computedNotes = newNotes;
 
-    if (newStatus === "cancelled" || newStatus === "returned_inventory" || newStatus === "returned_shipping") {
-      const items = selectedOrder.order_items;
+    const isStockDeducted = (status: string) => {
+      return !["cancelled", "returned_inventory", "returned_shipping"].includes(status);
+    };
+
+    let dbStatus = newStatus;
+    if (newStatus === "cancelled") {
+      dbStatus = "returned_inventory";
+      finalPaymentStatus = "unpaid";
+    }
+    if (newStatus === "partially_delivered") dbStatus = "delivered";
+
+    const currentDeducted = isStockDeducted(selectedOrder.status || "pending");
+    const finalDeducted = isStockDeducted(dbStatus);
+
+    if (currentDeducted && !finalDeducted) {
+      // Need to restore full stock (moving to cancelled/returned state)
+      const items = selectedOrder.order_items || [];
       for (const item of items) {
         const { data: variant } = await supabase.from("product_variants").select("stock_quantity").eq("id", item.product_variant_id).single();
         if (variant) {
           await supabase.from("product_variants").update({ stock_quantity: Number(variant.stock_quantity) + Number(item.quantity) }).eq("id", item.product_variant_id);
         }
       }
-      
-      if (shippingLoss && Number(shippingLoss) > 0) {
-        await supabase.from("transactions").insert({
-          tenant_id: tenant?.id,
-          type: "expense",
-          amount: Number(shippingLoss),
-          category: "مصروفات",
-          description: `خسارة شحن للطلب رقم ${selectedOrder.id.substring(0,6)}`,
-          transaction_date: new Date().toISOString()
-        });
-        computedNotes = computedNotes ? `${computedNotes} | خسارة شحن: ${shippingLoss}` : `خسارة شحن: ${shippingLoss}`;
+    } else if (!currentDeducted && finalDeducted) {
+      // Need to DEDUCT full stock (moving from cancelled back to active state)
+      const items = selectedOrder.order_items || [];
+      for (const item of items) {
+        const { data: variant } = await supabase.from("product_variants").select("stock_quantity").eq("id", item.product_variant_id).single();
+        if (variant) {
+          await supabase.from("product_variants").update({ stock_quantity: Number(variant.stock_quantity) - Number(item.quantity) }).eq("id", item.product_variant_id);
+        }
       }
-    } 
-    else if (newStatus === "partially_delivered") {
+    }
+
+    // Process shipping loss independently from stock changes
+    if (shippingLoss && Number(shippingLoss) > 0 && newStatus === "cancelled") {
+      await supabase.from("transactions").insert({
+        tenant_id: tenant?.id,
+        type: "expense",
+        amount: Number(shippingLoss),
+        category: "مصروفات",
+        description: `خسارة شحن للطلب رقم ${selectedOrder.id.substring(0,6)}`,
+        transaction_date: new Date().toISOString()
+      });
+      computedNotes = computedNotes ? `${computedNotes} | خسارة شحن: ${shippingLoss}` : `خسارة شحن: ${shippingLoss}`;
+      setShippingLoss(""); // reset after processing to prevent duplicates
+    } else if (newStatus !== "cancelled") {
+      // If order was cancelled with loss, but now changed to delivered/shipped, remove the shipping loss expense
+      await supabase.from("transactions").delete().like("description", `%${selectedOrder.id.substring(0,6)}%`);
+    }
+
+    if (newStatus === "partially_delivered") {
+      const totalReturned = newReturnedItems.reduce((acc, r) => acc + r.quantity, 0);
+      if (totalReturned === 0) {
+        toast.error("يجب تحديد القطع المرتجعة للطلب الجزئي");
+        setIsSubmitting(false);
+        return;
+      }
+      
       finalPaymentStatus = "partial";
       for (const ret of newReturnedItems) {
         if (ret.quantity > 0) {
-          const { data: variant } = await supabase.from("product_variants").select("stock_quantity").eq("id", ret.id).single();
-          if (variant) {
-            await supabase.from("product_variants").update({ stock_quantity: Number(variant.stock_quantity) + Number(ret.quantity) }).eq("id", ret.id);
+          // Update order_items quantity so Treasury calculates profit correctly
+          // The database trigger 'trigger_update_inventory_on_order' will automatically restore the stock
+          const orderItem = selectedOrder.order_items?.find((i: any) => i.id === ret.id);
+          if (orderItem) {
+            const newQty = Math.max(0, Number(orderItem.quantity) - Number(ret.quantity));
+            await supabase.from("order_items").update({ quantity: newQty }).eq("id", orderItem.id);
           }
         }
       }
 
       if (newAmountPaid && Number(newAmountPaid) > 0) {
-        await supabase.from("transactions").insert({
-          tenant_id: tenant?.id,
-          type: "income",
-          amount: Number(newAmountPaid),
-          category: "مبيعات",
-          description: `تحصيل جزئي للطلب رقم ${selectedOrder.id.substring(0,6)}`,
-          transaction_date: new Date().toISOString()
-        });
         computedNotes = computedNotes ? `${computedNotes} | تحصيل جزئي: ${newAmountPaid}` : `تحصيل جزئي: ${newAmountPaid}`;
       }
     } 
@@ -565,12 +694,11 @@ export default function OrdersPage() {
     }
 
     const orderSource = ["cancelled", "returned_inventory", "pending"].includes(newStatus) ? "stock_in_inventory" : "stock_in_shipping";
-    
-    let dbStatus = newStatus;
-    if (newStatus === "cancelled") dbStatus = "returned_inventory";
-    if (newStatus === "partially_delivered") dbStatus = "delivered";
 
     const updateObj: any = { status: dbStatus, payment_status: finalPaymentStatus, source: orderSource };
+    if (newStatus === "partially_delivered" && newAmountPaid && Number(newAmountPaid) > 0) {
+      updateObj.total_amount = Number(newAmountPaid);
+    }
     if (computedNotes) {
       updateObj.notes = computedNotes;
     }
@@ -597,6 +725,8 @@ export default function OrdersPage() {
     const orderNameStatus = `#${selectedOrder.id.substring(0,8)}`;
     logActivity(supabase, tenant?.id, currentUser?.id, `تحديث حالة الطلب إلى: ${getStatusText(dbStatus)}`, "order", selectedOrder.id, { order_name: orderNameStatus });
     setExpandedOrderId(null);
+    setNewReturnedItems([]);
+    setNewAmountPaid("");
     fetchOrders();
     setIsSubmitting(false);
   };
@@ -605,20 +735,34 @@ export default function OrdersPage() {
     setConfirmDialog({
       isOpen: true,
       title: "نقل للمحذوفات",
-      message: "هل أنت متأكد من نقل هذا الطلب للمحذوفات؟",
+      message: "هل أنت متأكد من نقل هذا الطلب للمحذوفات؟ سيتم استرجاع المنتجات للمخزن إذا لم تكن مسترجعة بالفعل.",
       onConfirm: async () => {
         // Update local state instantly
-        setOrders((prev) => prev.map(o => o.id === order.id ? { ...o, is_deleted: true } : o));
+        setOrders((prev) => prev.map(o => o.id === order.id ? { ...o, is_deleted: true, status: 'returned_inventory' } : o));
         setSelectedOrderIds(prev => prev.filter(id => id !== order.id));
 
-        const { error } = await supabase.from("orders").update({ is_deleted: true }).eq("id", order.id);
+        // Restore stock if it was currently deducted
+        const isStockDeducted = !["cancelled", "returned_inventory", "returned_shipping"].includes(order.status || "pending");
+        if (isStockDeducted && order.order_items) {
+           for (const item of order.order_items) {
+              const { data: variant } = await supabase.from("product_variants").select("stock_quantity").eq("id", item.product_variant_id).single();
+              if (variant) {
+                await supabase.from("product_variants").update({ stock_quantity: Number(variant.stock_quantity) + Number(item.quantity) }).eq("id", item.product_variant_id);
+              }
+           }
+        }
+
+        // Also delete any shipping loss transactions related to this order
+        await supabase.from("transactions").delete().like("description", `%${order.id.substring(0,6)}%`);
+
+        const { error } = await supabase.from("orders").update({ is_deleted: true, status: 'returned_inventory' }).eq("id", order.id);
         if (error) {
           toast.error("فشل في حذف الطلب");
           fetchOrders(); // rollback on error
         } else {
           const orderNameDel = `#${order.id.substring(0,8)}`;
-          logActivity(supabase, tenant?.id, currentUser?.id, "نقل الطلب للمحذوفات", "order", order.id, { order_name: orderNameDel });
-          toast.success("تم نقل الطلب لسجل المحذوفات");
+          logActivity(supabase, tenant?.id, currentUser?.id, "نقل الطلب للمحذوفات واسترجاع المخزون", "order", order.id, { order_name: orderNameDel });
+          toast.success("تم نقل الطلب للمحذوفات واسترجاع المنتجات بنجاح");
         }
       }
     });
@@ -719,6 +863,9 @@ export default function OrdersPage() {
             <div class="header">
               <div class="title">${tenant?.name || 'ميتش'} - بوليصة شحن</div>
               <div class="order-number">طلب رقم: #${order.id.substring(0,8)}</div>
+              <div style="margin-top: 10px;">
+                <svg class="barcode" data-order-id="${order.id}"></svg>
+              </div>
             </div>
             
             <div class="info-section">
@@ -773,8 +920,28 @@ export default function OrdersPage() {
               شكراً لتعاملكم معنا
             </div>
           </div>
+          <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
           <script>
-            window.onload = function() { window.print(); window.setTimeout(function() { window.close(); }, 500); }
+            window.onload = function() { 
+              var barcodes = document.querySelectorAll('.barcode');
+              barcodes.forEach(function(svg) {
+                var orderId = svg.getAttribute('data-order-id');
+                if (orderId && typeof JsBarcode !== 'undefined') {
+                  JsBarcode(svg, orderId, {
+                    format: "CODE128",
+                    lineColor: "#000",
+                    width: 1.5,
+                    height: 40,
+                    displayValue: true,
+                    margin: 0
+                  });
+                }
+              });
+              window.setTimeout(function() { 
+                window.print(); 
+                window.setTimeout(function() { window.close(); }, 500); 
+              }, 500);
+            }
           </script>
         </body>
       </html>
@@ -826,6 +993,9 @@ export default function OrdersPage() {
                 <div class="header">
                   <div class="title">${tenant?.name || 'ميتش'} - بوليصة شحن</div>
                   <div class="order-number">طلب رقم: #${order.id.substring(0,8)}</div>
+                  <div style="margin-top: 10px;">
+                    <svg class="barcode" data-order-id="${order.id.substring(0,8)}"></svg>
+                  </div>
                 </div>
                 
                 <div class="info-section">
@@ -882,8 +1052,28 @@ export default function OrdersPage() {
               </div>
             `;
           }).join('')}
+          <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
           <script>
-            window.onload = function() { window.print(); window.setTimeout(function() { window.close(); }, 500); }
+            window.onload = function() { 
+              var barcodes = document.querySelectorAll('.barcode');
+              barcodes.forEach(function(svg) {
+                var orderId = svg.getAttribute('data-order-id');
+                if (orderId && typeof JsBarcode !== 'undefined') {
+                  JsBarcode(svg, orderId, {
+                    format: "CODE128",
+                    lineColor: "#000",
+                    width: 1.5,
+                    height: 40,
+                    displayValue: true,
+                    margin: 0
+                  });
+                }
+              });
+              window.setTimeout(function() { 
+                window.print(); 
+                window.setTimeout(function() { window.close(); }, 500); 
+              }, 500);
+            }
           </script>
         </body>
       </html>
@@ -907,10 +1097,21 @@ export default function OrdersPage() {
           إضافة طلب
         </Button>
 
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <ExchangeModal
+          open={exchangeOpen}
+          onOpenChange={setExchangeOpen}
+          order={exchangeOrder}
+          tenantId={tenant?.id}
+          allVariants={products}
+          onSuccess={fetchOrders}
+        />
+        
+        <Dialog open={isOpen} onOpenChange={handleCloseDialog}>
           <DialogContent className="sm:max-w-[900px] border-0 shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col" dir="rtl">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-indigo-700 dark:text-indigo-400 border-b pb-4">إضافة طلب جديد</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-indigo-700 dark:text-indigo-400 border-b pb-4">
+                {editingOrder ? "تعديل الطلب" : "إضافة طلب جديد"}
+              </DialogTitle>
               <DialogDescription className="text-gray-500 mt-2">
                 أدخل كافة بيانات العميل وتفاصيل الطلب.
               </DialogDescription>
@@ -1153,11 +1354,11 @@ export default function OrdersPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">الحالة</SelectItem>
-                    <SelectItem value="pending">{`في الانتظار (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'pending').length})`}</SelectItem>
-                    <SelectItem value="shipped">{`في الشحن (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'shipped').length})`}</SelectItem>
-                    <SelectItem value="delivered">{`تم التوصيل (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'delivered').length})`}</SelectItem>
-                    <SelectItem value="partially_delivered">{`توصيل جزئي (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'partially_delivered').length})`}</SelectItem>
-                    <SelectItem value="cancelled">{`ملغي / مرتجع (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'cancelled').length})`}</SelectItem>
+                    <SelectItem value="pending">{`في الانتظار (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'pending' && isOrderMatchingSearchAndShipping(o)).length})`}</SelectItem>
+                    <SelectItem value="shipped">{`في الشحن (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'shipped' && isOrderMatchingSearchAndShipping(o)).length})`}</SelectItem>
+                    <SelectItem value="delivered">{`تم التوصيل (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'delivered' && isOrderMatchingSearchAndShipping(o)).length})`}</SelectItem>
+                    <SelectItem value="partially_delivered">{`توصيل جزئي (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'partially_delivered' && isOrderMatchingSearchAndShipping(o)).length})`}</SelectItem>
+                    <SelectItem value="cancelled">{`ملغي / مرتجع (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && ['cancelled', 'returned_inventory', 'returned_shipping'].includes(o.status) && isOrderMatchingSearchAndShipping(o)).length})`}</SelectItem>
                   </SelectContent>
                 </Select>
               </TableHead>
@@ -1240,6 +1441,7 @@ export default function OrdersPage() {
                                   if (val === "partially_delivered") {
                                     setPartialOrder(order);
                                     setPartialItems(order.order_items?.map((i: any) => ({
+                                      order_item_id: i.id,
                                       product_variant_id: i.product_variant_id,
                                       title: i.product_variants?.products?.name || "منتج",
                                       qty_returned: 0,
@@ -1331,6 +1533,12 @@ export default function OrdersPage() {
                                   </Button>
                                   <Button variant="ghost" size="icon" onClick={() => handleOpenDetails(order)} className="text-indigo-600 h-8 w-8 hover:bg-indigo-50" title="التفاصيل">
                                     <Eye className="w-4 h-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(order)} className="text-yellow-600 h-8 w-8 hover:bg-yellow-50" title="تعديل">
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" onClick={() => handleOpenExchange(order)} className="text-teal-600 h-8 w-8 hover:bg-teal-50" title="استبدال">
+                                    <ArrowRightLeft className="w-4 h-4" />
                                   </Button>
                                   <Button variant="ghost" size="icon" onClick={() => handleDeleteOrder(order)} className="text-red-500 h-8 w-8 hover:bg-red-50 hover:text-red-600" title="حذف">
                                     <Trash2 className="w-4 h-4" />

@@ -19,16 +19,18 @@ import { useTenant } from "@/components/shared/TenantProvider";
 export default function InventoryPage() {
   const { tenant } = useTenant();
   const [products, setProducts] = useState<any[]>([]);
+  const [productsLimit, setProductsLimit] = useState(50);
+  const [hasMoreProducts, setHasMoreProducts] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
   const supabase = createClient();
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    fetchProducts(productsLimit);
+  }, [productsLimit]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (currentLimit = productsLimit) => {
     setLoading(true);
     // Fetch products along with their variants
     const { data, error } = await supabase
@@ -37,12 +39,14 @@ export default function InventoryPage() {
         *,
         product_variants (*)
       `)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(currentLimit);
       
     if (error) {
-      toast.error("فشل في تحميل المخزون");
+      toast.error("فشل في جلب المخزون");
     } else {
       setProducts(data || []);
+      setHasMoreProducts((data?.length || 0) >= currentLimit);
     }
     setLoading(false);
   };
@@ -121,9 +125,16 @@ export default function InventoryPage() {
                   <TableCell>
                     <div className="flex flex-col gap-2">
                       {product.product_variants?.map((v: any, index: number, arr: any[]) => {
-                        const isLowStock = v.stock_quantity <= (v.low_stock_threshold || 5);
+                        const baseline = Number(v.baseline_stock) || 1;
+                        const ratio = Number(v.stock_quantity) / baseline;
+                        const isLowStock = ratio <= 0.20;
                         const variantName = [v.size, v.color].filter(c => c && c !== "-").join(" / ") || "أساسي";
                         const isSingleVariant = arr.length === 1;
+                        
+                        let alertText = "مخزون منخفض";
+                        if (ratio <= 0) alertText = "نفذ المخزون (0%)";
+                        else if (ratio <= 0.1) alertText = "متبقي 10% أو أقل";
+                        else if (ratio <= 0.2) alertText = "متبقي 20% أو أقل";
                         
                         return (
                           <div key={v.id} className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.06] p-2.5 rounded-lg hover:bg-gray-100/50 dark:hover:bg-white/[0.05] transition-colors">
@@ -139,7 +150,7 @@ export default function InventoryPage() {
                               {isLowStock && (
                                 <Badge variant="destructive" className="text-[10px] py-0 h-5 px-2 flex items-center gap-1 font-semibold bg-red-50 text-red-600 border border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20">
                                   <AlertTriangle className="w-3 h-3" />
-                                  مخزون منخفض
+                                  {alertText}
                                 </Badge>
                               )}
                               {!isSingleVariant && (
@@ -161,6 +172,18 @@ export default function InventoryPage() {
             )}
           </TableBody>
         </Table>
+        {hasMoreProducts && !searchQuery && (
+          <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-center">
+            <Button 
+              variant="outline" 
+              onClick={() => setProductsLimit(prev => prev + 50)}
+              disabled={loading}
+              className="bg-white hover:bg-gray-50 text-indigo-600 border-indigo-200"
+            >
+              {loading ? "جاري التحميل..." : "تحميل المزيد من المنتجات"}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

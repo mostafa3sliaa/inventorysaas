@@ -73,6 +73,31 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     if (savedPrevCount !== null) {
       setPrevCount(Number(savedPrevCount));
     }
+
+    // Unlock audio on first interaction to allow sounds
+    const unlockAudio = () => {
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          const audioCtx = new AudioContextClass();
+          const osc = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          gainNode.gain.value = 0;
+          osc.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          osc.start(0);
+          osc.stop(0.01);
+        }
+      } catch (e) {}
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('keydown', unlockAudio);
+    };
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('keydown', unlockAudio);
+    return () => {
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('keydown', unlockAudio);
+    };
   }, []);
   const supabase = createClient();
 
@@ -89,7 +114,16 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       ]);
 
       if (stockData) {
-        const lowStock = stockData.filter(v => v.stock_quantity <= (v.low_stock_threshold || 5));
+        const lowStock = stockData.filter(v => {
+          if (v.stock_quantity <= 0) return true; // Always alert if out of stock
+          
+          // Use low_stock_threshold as the "Base Stock Level" (last_restock_level).
+          // If not set, use current stock so it doesn't alert immediately.
+          const baseLevel = v.low_stock_threshold || v.stock_quantity || 1;
+          
+          // Alert if stock is at or below 20% of the base level
+          return v.stock_quantity <= (baseLevel * 0.20);
+        });
         setLowStockVariants(lowStock);
       }
       if (pendingCount !== null) {
@@ -112,6 +146,35 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       if (notificationCount > prevCount) {
         setIsRead(false);
         localStorage.setItem("notifications_is_read", "false");
+        
+        // Play audio notification using Web Audio API
+        try {
+          const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioContextClass) {
+            const audioContext = new AudioContextClass();
+            // Resume context if suspended (browser policy)
+            if (audioContext.state === 'suspended') {
+              audioContext.resume();
+            }
+            const osc = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, audioContext.currentTime); // A5
+            osc.frequency.exponentialRampToValueAtTime(440, audioContext.currentTime + 0.5); // Drop to A4
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            osc.start();
+            osc.stop(audioContext.currentTime + 0.5);
+          }
+        } catch (e) {
+          console.error("Audio playback failed", e);
+        }
       }
       setPrevCount(notificationCount);
       localStorage.setItem("notifications_prev_count", notificationCount.toString());

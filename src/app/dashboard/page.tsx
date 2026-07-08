@@ -37,7 +37,11 @@ export default function DashboardPage() {
       .select(`*, products ( name )`);
       
     if (lowStockData) {
-      const lowStock = lowStockData.filter(v => v.stock_quantity <= (v.low_stock_threshold || 5));
+      const lowStock = lowStockData.filter(v => {
+        const baseline = Number(v.baseline_stock) || 1;
+        const ratio = Number(v.stock_quantity) / baseline;
+        return ratio <= 0.20;
+      });
       setLowStockVariants(lowStock);
       
       // Calculate Inventory Value
@@ -55,8 +59,10 @@ export default function DashboardPage() {
     const { data: salesData } = await supabase
       .from('orders')
       .select('total_amount, created_at')
+      .eq('tenant_id', tenantData?.id)
       .gte('created_at', thirtyDaysAgo.toISOString())
-      .not('status', 'in', '("cancelled","returned_inventory","returned_shipping")');
+      .not('status', 'in', '("cancelled","returned_inventory","returned_shipping")')
+      .or('is_deleted.is.null,is_deleted.eq.false');
       
     if (salesData) {
       // Calculate total for this month only
@@ -83,7 +89,9 @@ export default function DashboardPage() {
     const { count: pendingCount } = await supabase
       .from('orders')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending');
+      .eq('tenant_id', tenantData?.id)
+      .eq('status', 'pending')
+      .or('is_deleted.is.null,is_deleted.eq.false');
       
     if (pendingCount !== null) {
       setMetrics(prev => ({ ...prev, pendingOrders: pendingCount }));
@@ -92,7 +100,9 @@ export default function DashboardPage() {
     // Total Orders Count for serial numbering
     const { count: totalOrdersCount } = await supabase
       .from('orders')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenantData?.id)
+      .or('is_deleted.is.null,is_deleted.eq.false');
       
     setMetrics(prev => ({ ...prev, totalOrdersCount: totalOrdersCount || 0 }));
 
@@ -100,6 +110,8 @@ export default function DashboardPage() {
     const { data: recentOrdersData } = await supabase
       .from('orders')
       .select(`id, total_amount, created_at, customers ( name )`)
+      .eq('tenant_id', tenantData?.id)
+      .or('is_deleted.is.null,is_deleted.eq.false')
       .order('created_at', { ascending: false })
       .limit(5);
       
@@ -111,6 +123,7 @@ export default function DashboardPage() {
     const { data: suppliersData } = await supabase
       .from('suppliers')
       .select('balance')
+      .eq('tenant_id', tenantData?.id)
       .gt('balance', 0);
       
     if (suppliersData) {
@@ -121,22 +134,31 @@ export default function DashboardPage() {
     // 4. Vault Profit (Net Profit of Paid Orders)
     const { data: paidOrders } = await supabase
       .from('orders')
-      .select(`id, order_items ( quantity, unit_price, product_variants ( normal_cost ) )`)
-      .eq('payment_status', 'paid');
+      .select(`id, is_deleted, total_amount, shipping_fee, order_items ( quantity, unit_price, product_variants ( normal_cost ) )`)
+      .in('payment_status', ['paid', 'partial'])
+      .eq('tenant_id', tenantData.id);
       
     if (paidOrders) {
       let vaultProfit = 0;
-      paidOrders.forEach(order => {
+      paidOrders.filter((o: any) => o.is_deleted !== true).forEach(order => {
         let orderRevenue = 0;
         let totalCost = 0;
         order.order_items?.forEach((item: any) => {
            const qty = Number(item.quantity) || 0;
            const price = Number(item.unit_price) || 0;
            const cost = Number(item.product_variants?.normal_cost) || 0;
+           
            orderRevenue += qty * price;
            totalCost += qty * cost;
         });
-        vaultProfit += (orderRevenue - totalCost);
+
+        // Use manual total_amount if present (e.g. from partial deliveries or discounts)
+        // Subtract shipping fee to get actual item revenue for profit calculation
+        const itemRevenue = (order.total_amount !== null && order.total_amount !== undefined) 
+          ? Number(order.total_amount) - Number(order.shipping_fee || 0)
+          : orderRevenue;
+          
+        vaultProfit += (itemRevenue - totalCost);
       });
       setMetrics(prev => ({ ...prev, vaultProfit }));
     }
@@ -226,11 +248,19 @@ export default function DashboardPage() {
             <h3 className="text-sm font-semibold text-red-700 dark:text-red-400">تنبيهات انخفاض المخزون</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            {lowStockVariants.map((v) => (
+            {lowStockVariants.map((v) => {
+              const baseline = Number(v.baseline_stock) || 1;
+              const ratio = Number(v.stock_quantity) / baseline;
+              let alertText = "تنبيه";
+              if (ratio <= 0) alertText = "نفذ المخزون (0%)";
+              else if (ratio <= 0.1) alertText = "متبقي 10% أو أقل";
+              else if (ratio <= 0.2) alertText = "متبقي 20% أو أقل";
+              
+              return (
               <Badge key={v.id} variant="destructive" className="px-3 py-1 text-xs bg-red-50 text-red-700 border border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20">
-                {v.products?.name} - {v.size} ({v.color}) | متبقي: {v.stock_quantity}
+                {v.products?.name} - {v.size} ({v.color}) | {alertText} (الكمية: {v.stock_quantity})
               </Badge>
-            ))}
+            )})}
           </div>
         </div>
       )}

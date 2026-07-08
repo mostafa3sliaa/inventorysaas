@@ -86,23 +86,37 @@ export default function TreasuryPage() {
     // Fetch Vault Profit from paid orders
     const { data: paidOrders } = await supabase
       .from('orders')
-      .select(`id, order_items ( quantity, unit_price, product_variants ( normal_cost ) )`)
-      .eq('payment_status', 'paid')
+      .select(`id, is_deleted, total_amount, shipping_fee, payment_status, order_items ( quantity, unit_price, product_variants ( normal_cost ) )`)
+      .in('payment_status', ['paid', 'partial', 'refunded'])
       .eq('tenant_id', tenant.id);
       
     if (paidOrders) {
       let profit = 0;
-      paidOrders.forEach(order => {
+      paidOrders.filter((o: any) => o.is_deleted !== true).forEach(order => {
         let orderRevenue = 0;
         let totalCost = 0;
         order.order_items?.forEach((item: any) => {
            const qty = Number(item.quantity) || 0;
            const price = Number(item.unit_price) || 0;
            const cost = Number(item.product_variants?.normal_cost) || 0;
+           
            orderRevenue += qty * price;
            totalCost += qty * cost;
         });
-        profit += (orderRevenue - totalCost);
+        
+        // If order is refunded (returned), we only lose the shipping fee, cost of items is not lost
+        if (order.payment_status === 'refunded') {
+          profit -= Number(order.shipping_fee || 0);
+          return;
+        }
+        
+        // Use manual total_amount if present (e.g. from shipping fees or partial deliveries)
+        // Subtract shipping fee to get actual item revenue for profit calculation
+        const itemRevenue = (order.total_amount !== null && order.total_amount !== undefined) 
+          ? Number(order.total_amount) - Number(order.shipping_fee || 0)
+          : orderRevenue;
+          
+        profit += (itemRevenue - totalCost);
       });
       setVaultProfit(profit);
     }

@@ -252,7 +252,20 @@ export default function SupplierDetailsPage() {
 
         if (itemsToInsert.length > 0) {
           const { error: itemsError } = await supabase.from("purchase_items").insert(itemsToInsert);
-          if (itemsError) toast.error("فشل حفظ تفاصيل المشتريات: " + itemsError.message);
+          if (itemsError) {
+            toast.error("فشل حفظ تفاصيل المشتريات: " + itemsError.message);
+          } else {
+            // Update the Base Stock Level (baseline_stock) for each variant
+            // so the 20% alert is calculated based on the new total capacity
+            for (const item of itemsToInsert) {
+              const { data: v } = await supabase.from("product_variants").select("stock_quantity").eq("id", item.product_variant_id).single();
+              if (v) {
+                // The DB trigger has already updated the stock_quantity, 
+                // we set the base limit to this new high value
+                await supabase.from("product_variants").update({ baseline_stock: v.stock_quantity }).eq("id", item.product_variant_id);
+              }
+            }
+          }
         }
       }
       totalBalanceChange += calculatedInvoiceAmount;
@@ -301,6 +314,16 @@ export default function SupplierDetailsPage() {
         total_amount: -paidAmt, paid_amount: paidAmt, status: "completed",
         type: "payment", quantity: 0, created_at: transactionTimestamp
       });
+      
+      await supabase.from("transactions").insert({
+        tenant_id: tenant.id,
+        type: "expense",
+        amount: paidAmt,
+        category: "مدفوعات موردين",
+        description: `دفعة للمورد: ${supplier.name}`,
+        transaction_date: transactionTimestamp
+      });
+
       totalBalanceChange -= paidAmt;
     }
 

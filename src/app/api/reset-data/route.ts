@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     // Delete from tables in order to respect constraints
     // Cascades will handle items and variants
-    const tables = ['orders', 'customers', 'purchases', 'products', 'suppliers'];
+    const tables = ['orders', 'customers', 'purchases', 'products', 'suppliers', 'transactions'];
     
     for (const table of tables) {
       const { error } = await supabase

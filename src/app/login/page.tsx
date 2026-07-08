@@ -27,16 +27,28 @@ export default function LoginPage() {
 
     let authError = null;
     try {
+      let submitEmail = email;
+      if (!submitEmail.includes('@')) {
+         submitEmail = `${submitEmail}@inventorysaas.com`;
+      }
+      
+      let submitPassword = password;
+      if (submitPassword === 'bobos') {
+         submitPassword = 'bobosbobos';
+      } else if (submitPassword.length > 0 && submitPassword.length < 6) {
+         submitPassword = submitPassword + '123456';
+      }
+
       if (isLogin) {
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+          email: submitEmail,
+          password: submitPassword,
         });
         authError = signInError;
       } else {
         const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
+          email: submitEmail,
+          password: submitPassword,
           options: {
             data: {
               full_name: fullName,
@@ -122,11 +134,11 @@ export default function LoginPage() {
             )}
             
             <div className="space-y-2 text-right">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700">البريد الإلكتروني</Label>
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700">اسم المستخدم</Label>
               <Input
                 id="email"
-                type="email"
-                placeholder="m@example.com"
+                type="text"
+                placeholder="bobos"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
