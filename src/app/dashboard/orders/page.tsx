@@ -264,7 +264,13 @@ export default function OrdersPage() {
     setNewAmountPaid("");
     setNewReturnedItems(order.order_items?.map((i: any) => ({ id: i.product_variant_id, quantity: 0, max: i.quantity, title: i.product_variants?.products?.name || "منتج" })) || []);
     setSelectedOrder(order);
-    setNewStatus(order.status || "pending");
+    
+    let initialStatus = order.status || "pending";
+    if (initialStatus === "returned_inventory" || initialStatus === "returned_shipping") {
+      initialStatus = "cancelled";
+    }
+    setNewStatus(initialStatus);
+    
     setNewPaymentStatus(order.payment_status || "unpaid");
     setNewStockLocation(order.source === "stock_in_inventory" ? "inventory" : "shipping");
     
