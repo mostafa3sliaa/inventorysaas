@@ -258,3 +258,64 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+-- ==========================================
+-- ROW LEVEL SECURITY (RLS) SETUP
+-- ==========================================
+
+-- 1. Create a secure function to get the current user's tenant_id
+CREATE OR REPLACE FUNCTION current_tenant_id() 
+RETURNS UUID AS $$
+  SELECT tenant_id FROM public.users WHERE id = auth.uid() LIMIT 1;
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- 2. Enable RLS on all tables
+ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_variants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE purchases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE purchase_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shipments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
+
+-- 3. Create Policies for Base Tables (Tables with tenant_id)
+-- Tenants
+CREATE POLICY "Users can access their own tenant" ON tenants FOR ALL USING (id = current_tenant_id());
+
+-- Users
+CREATE POLICY "Users can access co-workers" ON users FOR ALL USING (tenant_id = current_tenant_id());
+
+-- Other Base Tables
+CREATE POLICY "Tenant Isolation" ON suppliers FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY "Tenant Isolation" ON products FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY "Tenant Isolation" ON purchases FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY "Tenant Isolation" ON customers FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY "Tenant Isolation" ON orders FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY "Tenant Isolation" ON transactions FOR ALL USING (tenant_id = current_tenant_id());
+CREATE POLICY "Tenant Isolation" ON activity_logs FOR ALL USING (tenant_id = current_tenant_id());
+
+-- 4. Create Policies for Child Tables (Tables linked to a parent table with tenant_id)
+-- Product Variants
+CREATE POLICY "Tenant Isolation" ON product_variants FOR ALL USING (
+  product_id IN (SELECT id FROM products WHERE tenant_id = current_tenant_id())
+);
+
+-- Purchase Items
+CREATE POLICY "Tenant Isolation" ON purchase_items FOR ALL USING (
+  purchase_id IN (SELECT id FROM purchases WHERE tenant_id = current_tenant_id())
+);
+
+-- Order Items
+CREATE POLICY "Tenant Isolation" ON order_items FOR ALL USING (
+  order_id IN (SELECT id FROM orders WHERE tenant_id = current_tenant_id())
+);
+
+-- Shipments
+CREATE POLICY "Tenant Isolation" ON shipments FOR ALL USING (
+  order_id IN (SELECT id FROM orders WHERE tenant_id = current_tenant_id())
+);

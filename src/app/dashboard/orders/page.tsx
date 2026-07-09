@@ -507,7 +507,7 @@ export default function OrdersPage() {
       }).eq("id", partialOrder.id);
       
       const orderNamePartial = `#${partialOrder.id.substring(0,8)}`;
-      logActivity(supabase, tenant?.id, currentUser?.id, "تأكيد استلام جزئي", "order", partialOrder.id, { order_name: orderNamePartial });
+      logActivity(supabase, tenant?.id!, currentUser?.id!, "تأكيد استلام جزئي", "order", partialOrder.id, { order_name: orderNamePartial });
       toast.success("تم تأكيد الاستلام الجزئي بنجاح!");
       setPartialModalOpen(false);
       setExpandedOrderId(null);
@@ -954,10 +954,10 @@ export default function OrdersPage() {
     }
 
     if (editingOrder) {
-      logActivity(supabase, tenant?.id, currentUser?.id, "تعديل الطلب", "order", orderId, { order_name: `#${orderId.substring(0,8)}` });
+      logActivity(supabase, tenant?.id!, currentUser?.id!, "تعديل الطلب", "order", orderId, { order_name: `#${orderId.substring(0,8)}` });
       toast.success("تم تعديل الطلب بنجاح");
     } else {
-      logActivity(supabase, tenant?.id, currentUser?.id, "إنشاء طلب جديد", "order", orderId, { order_name: `#${orderId.substring(0,8)}` });
+      logActivity(supabase, tenant?.id!, currentUser?.id!, "إنشاء طلب جديد", "order", orderId, { order_name: `#${orderId.substring(0,8)}` });
       toast.success("تم إضافة الطلب بنجاح");
     }
     
@@ -1230,7 +1230,7 @@ export default function OrdersPage() {
           fetchOrders(); // rollback on error
         } else {
           const orderNameDel = `#${order.id.substring(0,8)}`;
-          logActivity(supabase, tenant?.id, currentUser?.id, "نقل الطلب للمحذوفات واسترجاع المخزون", "order", order.id, { order_name: orderNameDel });
+          logActivity(supabase, tenant?.id!, currentUser?.id!, "نقل الطلب للمحذوفات واسترجاع المخزون", "order", order.id, { order_name: orderNameDel });
           toast.success("تم نقل الطلب للمحذوفات واسترجاع المنتجات بنجاح");
         }
       }
@@ -1254,7 +1254,7 @@ export default function OrdersPage() {
           fetchOrders(); // rollback on error
         } else {
           const orderNameRes = `#${order.id.substring(0,8)}`;
-          logActivity(supabase, tenant?.id, currentUser?.id, "استعادة الطلب من المحذوفات", "order", order.id, { order_name: orderNameRes });
+          logActivity(supabase, tenant?.id!, currentUser?.id!, "استعادة الطلب من المحذوفات", "order", order.id, { order_name: orderNameRes });
           toast.success("تم استعادة الطلب بنجاح");
         }
       }

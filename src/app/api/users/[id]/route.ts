@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     
     // 1. Verify the current user is logged in
@@ -15,12 +16,23 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     // 2. Verify the current user is an admin
     const { data: userData } = await supabase
       .from('users')
-      .select('role')
+      .select('role, tenant_id')
       .eq('id', user.id)
       .single();
 
     if (userData?.role !== 'admin') {
       return NextResponse.json({ error: 'صلاحيات إدارية مطلوبة' }, { status: 403 });
+    }
+
+    // 2.5 Verify target user belongs to the same tenant (Prevent IDOR)
+    const { data: targetUser } = await supabase
+      .from('users')
+      .select('tenant_id')
+      .eq('id', id)
+      .single();
+
+    if (!targetUser || targetUser.tenant_id !== userData.tenant_id) {
+      return NextResponse.json({ error: 'غير مصرح لك بتعديل بيانات مستخدم خارج شركتك' }, { status: 403 });
     }
 
     // 3. Get the request body
@@ -52,7 +64,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     // 5. Update user password
     const { data: updatedUser, error: updateError } = await adminAuthClient.auth.admin.updateUserById(
-      params.id,
+      id,
       { password: password }
     );
 
