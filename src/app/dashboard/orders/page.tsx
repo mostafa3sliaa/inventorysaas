@@ -1705,7 +1705,7 @@ export default function OrdersPage() {
                           </TableCell>
                           <TableCell className="text-left">
                             <div className="flex items-center justify-end gap-2">
-                              {activeTab === "active" ? (
+                              {(activeTab === "active" || activeTab === "scan") ? (
                                 <>
                                   <Button variant="outline" size="sm" onClick={() => handleOpenStatus(order)} className="h-8">
                                     تحديث الحالة
