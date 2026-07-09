@@ -353,24 +353,24 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="flex flex-col md:flex-row gap-4 w-full items-start" orientation="vertical">
-        <TabsList className="flex flex-row md:flex-col w-full md:w-64 h-auto items-stretch justify-start rounded-2xl bg-white/60 dark:bg-[#1E293B]/60 backdrop-blur-md p-3 text-gray-500 shadow-lg shadow-indigo-500/5 border border-white/40 dark:border-white/10 shrink-0 gap-2 overflow-x-auto">
+        <TabsList className="flex flex-row md:flex-col w-full md:w-56 h-auto items-stretch justify-start rounded-2xl bg-white/60 dark:bg-[#1E293B]/60 backdrop-blur-md p-2 text-gray-500 shadow-lg shadow-indigo-500/5 border border-white/40 dark:border-white/10 shrink-0 gap-1 overflow-x-auto">
           <TabsTrigger 
             value="general" 
-            className="flex items-center gap-3 justify-start rounded-xl px-5 py-3.5 text-sm font-bold transition-all duration-300 data-[state=active]:bg-white dark:data-[state=active]:bg-indigo-600 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-white/50 dark:hover:bg-white/5 w-full whitespace-nowrap"
+            className="flex items-center gap-2 justify-start rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 data-[state=active]:bg-white dark:data-[state=active]:bg-indigo-600 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-white/50 dark:hover:bg-white/5 w-full whitespace-nowrap"
           >
             <Building2 className="w-4 h-4" />
             الإعدادات العامة
           </TabsTrigger>
           <TabsTrigger 
             value="users" 
-            className="flex items-center gap-3 justify-start rounded-xl px-5 py-3.5 text-sm font-bold transition-all duration-300 data-[state=active]:bg-white dark:data-[state=active]:bg-indigo-600 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-white/50 dark:hover:bg-white/5 w-full whitespace-nowrap"
+            className="flex items-center gap-2 justify-start rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 data-[state=active]:bg-white dark:data-[state=active]:bg-indigo-600 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-white/50 dark:hover:bg-white/5 w-full whitespace-nowrap"
           >
             <Users className="w-4 h-4" />
             إدارة المستخدمين
           </TabsTrigger>
           <TabsTrigger 
             value="activity" 
-            className="flex items-center gap-3 justify-start rounded-xl px-5 py-3.5 text-sm font-bold transition-all duration-300 data-[state=active]:bg-white dark:data-[state=active]:bg-indigo-600 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-white/50 dark:hover:bg-white/5 w-full whitespace-nowrap"
+            className="flex items-center gap-2 justify-start rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 data-[state=active]:bg-white dark:data-[state=active]:bg-indigo-600 data-[state=active]:text-indigo-700 dark:data-[state=active]:text-white data-[state=active]:shadow-md hover:bg-white/50 dark:hover:bg-white/5 w-full whitespace-nowrap"
           >
             <Activity className="w-4 h-4" />
             سجل النشاط
@@ -383,56 +383,56 @@ export default function SettingsPage() {
           
           {/* Visual Identity Card */}
           <div className="bg-white/80 dark:bg-[#1E293B]/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-indigo-500/5 border border-white/60 dark:border-white/[0.08] overflow-hidden transition-all duration-300 hover:shadow-indigo-500/10">
-            <div className="border-b border-gray-100 dark:border-white/[0.06] p-6 bg-gradient-to-r from-gray-50/50 to-white dark:from-white/[0.02] dark:to-transparent flex items-center gap-4">
-              <Palette className="w-6 h-6 text-indigo-600 drop-shadow-sm" />
+            <div className="border-b border-gray-100 dark:border-white/[0.06] p-4 bg-gradient-to-r from-gray-50/50 to-white dark:from-white/[0.02] dark:to-transparent flex items-center gap-3">
+              <Palette className="w-5 h-5 text-indigo-600 drop-shadow-sm" />
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">الهوية البصرية</h3>
-                <p className="text-sm text-gray-500 mt-0.5">تخصيص اسم الشركة والشعار واللون المميز للتطبيق</p>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white">الهوية البصرية</h3>
+                <p className="text-xs text-gray-500 mt-0.5">تخصيص اسم الشركة والشعار واللون المميز للتطبيق</p>
               </div>
             </div>
             
-            <div className="p-4 md:p-6">
-              <div className="flex flex-col md:flex-row gap-6 md:gap-10">
+            <div className="p-3 md:p-4">
+              <div className="flex flex-col md:flex-row gap-4 md:gap-6">
                 
                 {/* Form Fields */}
-                <div className="space-y-4 flex-1 max-w-md">
-                  <div className="space-y-2">
-                    <Label htmlFor="companyName" className="text-sm font-medium text-gray-700 dark:text-gray-300">اسم الشركة</Label>
+                <div className="space-y-3 flex-1 max-w-md">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="companyName" className="text-xs font-medium text-gray-700 dark:text-gray-300">اسم الشركة</Label>
                     <Input 
                       id="companyName" 
                       value={name} 
                       onChange={(e) => setName(e.target.value)} 
-                      className="text-right h-10 bg-white dark:bg-[#0F172A] border-gray-200 dark:border-white/[0.1] focus-visible:ring-indigo-500 rounded-xl"
+                      className="text-right h-8 bg-white dark:bg-[#0F172A] border-gray-200 dark:border-white/[0.1] focus-visible:ring-indigo-500 rounded-xl text-sm"
                       placeholder="أدخل اسم الشركة..."
                     />
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="primaryColor" className="text-sm font-medium text-gray-700 dark:text-gray-300">اللون الأساسي (Primary Color)</Label>
-                    <div className="flex gap-4 items-center p-2 rounded-xl border border-gray-200 dark:border-white/[0.1] bg-gray-50 dark:bg-[#0F172A]">
-                      <div className="relative overflow-hidden rounded-lg w-8 h-8 border border-black/10 shrink-0 shadow-sm">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="primaryColor" className="text-xs font-medium text-gray-700 dark:text-gray-300">اللون الأساسي (Primary Color)</Label>
+                    <div className="flex gap-3 items-center p-1.5 rounded-xl border border-gray-200 dark:border-white/[0.1] bg-gray-50 dark:bg-[#0F172A]">
+                      <div className="relative overflow-hidden rounded-md w-6 h-6 border border-black/10 shrink-0 shadow-sm">
                         <input 
                           id="primaryColor" 
                           type="color"
                           value={color} 
                           onChange={(e) => setColor(e.target.value)} 
-                          className="absolute -top-2 -left-2 w-12 h-12 cursor-pointer"
+                          className="absolute -top-2 -left-2 w-10 h-10 cursor-pointer"
                         />
                       </div>
-                      <div className="flex-1 font-mono text-sm text-gray-600 dark:text-gray-300 dir-ltr">{color.toUpperCase()}</div>
+                      <div className="flex-1 font-mono text-xs text-gray-600 dark:text-gray-300 dir-ltr">{color.toUpperCase()}</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Logo Upload */}
                 <div className="flex-1">
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">شعار الشركة (Logo)</Label>
+                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">شعار الشركة (Logo)</Label>
                   <div 
                     onClick={() => fileInputRef.current?.click()}
-                    className="group relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-200 dark:border-white/[0.1] rounded-2xl bg-gray-50 dark:bg-[#0F172A] hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 hover:border-indigo-300 dark:hover:border-indigo-500/30 transition-all cursor-pointer overflow-hidden min-h-[140px]"
+                    className="group relative flex flex-col items-center justify-center p-3 border-2 border-dashed border-gray-200 dark:border-white/[0.1] rounded-2xl bg-gray-50 dark:bg-[#0F172A] hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 hover:border-indigo-300 dark:hover:border-indigo-500/30 transition-all cursor-pointer overflow-hidden min-h-[100px]"
                   >
                     {logoUrl ? (
-                      <div className="relative w-24 h-24 flex items-center justify-center p-2 bg-white dark:bg-[#1E293B] rounded-xl shadow-sm border border-gray-100 dark:border-white/[0.05] group-hover:scale-105 transition-transform duration-300 z-10">
+                      <div className="relative w-16 h-16 flex items-center justify-center p-1.5 bg-white dark:bg-[#1E293B] rounded-xl shadow-sm border border-gray-100 dark:border-white/[0.05] group-hover:scale-105 transition-transform duration-300 z-10">
                         <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
                       </div>
                     ) : (
@@ -472,17 +472,17 @@ export default function SettingsPage() {
             {/* Soft red glow effect */}
             <div className="absolute inset-0 bg-gradient-to-br from-red-50/50 to-transparent dark:from-red-900/10 dark:to-transparent pointer-events-none" />
             
-            <div className="p-4 md:p-6 relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl shrink-0 group-hover:scale-110 transition-transform">
-                  <ShieldAlert className="w-6 h-6" />
+            <div className="p-4 relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg shrink-0 group-hover:scale-110 transition-transform">
+                  <ShieldAlert className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-red-700 dark:text-red-400">منطقة الخطر (Danger Zone)</h3>
-                  <p className="text-sm text-red-600/80 dark:text-red-400/80 mt-1 max-w-xl leading-relaxed">
+                  <h3 className="text-sm font-bold text-red-700 dark:text-red-400">منطقة الخطر (Danger Zone)</h3>
+                  <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-1 max-w-xl leading-relaxed">
                     تصفير النظام يمحو <span className="font-semibold underline decoration-red-300 underline-offset-2">جميع</span> المنتجات، الطلبات، العملاء، والموردين. 
                     ستحتفظ فقط بحسابك (المدير) وإعدادات الهوية البصرية. <br/>
-                    <strong className="font-bold text-red-700 dark:text-red-400 mt-1 block">هذا الإجراء نهائي ولا يمكن التراجع عنه بأي شكل.</strong>
+                    <strong className="font-bold text-red-700 dark:text-red-400 block mt-0.5">هذا الإجراء نهائي ولا يمكن التراجع عنه بأي شكل.</strong>
                   </p>
                 </div>
               </div>
