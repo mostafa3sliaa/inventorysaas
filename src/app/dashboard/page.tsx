@@ -58,7 +58,7 @@ export default function DashboardPage() {
     
     const { data: salesData } = await supabase
       .from('orders')
-      .select('total_amount, created_at')
+      .select('total_amount, shipping_fee, created_at')
       .eq('tenant_id', tenantData?.id)
       .gte('created_at', thirtyDaysAgo.toISOString())
       .not('status', 'in', '("cancelled","returned_inventory","returned_shipping")')
@@ -67,7 +67,7 @@ export default function DashboardPage() {
     if (salesData) {
       // Calculate total for this month only
       const thisMonthSales = salesData.filter(s => new Date(s.created_at) >= new Date(startOfMonth));
-      const sales = thisMonthSales.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
+      const sales = thisMonthSales.reduce((acc, curr) => acc + (Number(curr.total_amount) - Number(curr.shipping_fee || 0)), 0);
       setMetrics(prev => ({ ...prev, totalSales: sales }));
 
       // Process chart data (group by date)
@@ -75,7 +75,7 @@ export default function DashboardPage() {
       salesData.forEach(order => {
         const date = new Date(order.created_at).toLocaleDateString('en-CA');
         if (!dailySales[date]) dailySales[date] = 0;
-        dailySales[date] += Number(order.total_amount);
+        dailySales[date] += (Number(order.total_amount) - Number(order.shipping_fee || 0));
       });
 
       const formattedChartData = Object.keys(dailySales)

@@ -45,12 +45,12 @@ export default function ReportsPage() {
     setLoading(true);
     const { data: salesData } = await supabase
       .from("orders")
-      .select("total_amount")
+      .select("total_amount, shipping_fee")
       .not('status', 'in', '("cancelled","returned_inventory","returned_shipping")');
     const { data: purchasesData } = await supabase
       .from("purchases")
       .select("total_amount");
-    const tSales = salesData?.reduce((acc, curr) => acc + Number(curr.total_amount), 0) || 0;
+    const tSales = salesData?.reduce((acc, curr) => acc + (Number(curr.total_amount) - Number(curr.shipping_fee || 0)), 0) || 0;
     const tPurchases = purchasesData?.reduce((acc, curr) => acc + Number(curr.total_amount), 0) || 0;
     setSalesTotal(tSales);
     setPurchasesTotal(tPurchases);
@@ -60,7 +60,7 @@ export default function ReportsPage() {
   const exportExcel = async () => {
     const { data, error } = await supabase
       .from("orders")
-      .select("id, total_amount, status, created_at, customers(name)")
+      .select("id, total_amount, shipping_fee, status, created_at, customers(name)")
       .order("created_at", { ascending: false });
 
     if (error) { toast.error("حدث خطأ أثناء التصدير"); return; }
@@ -84,7 +84,7 @@ export default function ReportsPage() {
       worksheet.addRow({
         id: order.id,
         customer: order.customers?.name || "غير معروف",
-        amount: order.total_amount,
+        amount: Number(order.total_amount) - Number(order.shipping_fee || 0),
         status: order.status === "pending" ? "قيد الانتظار" : order.status === "shipped" ? "تم الشحن" : "مكتمل",
         date: new Date(order.created_at).toLocaleDateString("ar-EG")
       });
@@ -123,7 +123,7 @@ export default function ReportsPage() {
       tableRows.push([
         order.id.split('-')[0],
         order.customers?.name || "Unknown",
-        order.total_amount,
+        Number(order.total_amount) - Number(order.shipping_fee || 0),
         order.status,
         new Date(order.created_at).toLocaleDateString()
       ]);
