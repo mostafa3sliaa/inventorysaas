@@ -313,11 +313,11 @@ export default function TreasuryPage() {
       </div>
 
       {/* Transactions Table */}
-      <div className="bg-white dark:bg-[#1E293B] rounded-xl border border-gray-100 dark:border-white/[0.06] overflow-hidden">
-        <div className="p-4 border-b border-gray-100 dark:border-white/[0.06]">
+      <div className="bg-white dark:bg-[#1E293B] rounded-xl border border-gray-100 dark:border-white/[0.06] overflow-x-auto">
+        <div className="p-4 border-b border-gray-100 dark:border-white/[0.06] min-w-max">
           <h3 className="font-semibold text-gray-900 dark:text-white">سجل حركات الخزنة</h3>
         </div>
-        <Table>
+        <Table className="min-w-max">
           <TableHeader>
             <TableRow>
               <TableHead className="text-right">التاريخ</TableHead>
