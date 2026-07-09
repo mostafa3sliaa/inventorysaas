@@ -1685,7 +1685,10 @@ export default function OrdersPage() {
             </DialogDescription>
           </DialogHeader>
           
-          {selectedOrder && (
+          {(() => {
+            const displayOrder = orders.find(o => o.id === selectedOrder?.id) || selectedOrder;
+            if (!displayOrder) return null;
+            return (
             <div className="grid md:grid-cols-2 gap-6 mt-2">
               
               {/* Right Column (in RTL): Customer & Shipping Info */}
@@ -1695,10 +1698,10 @@ export default function OrdersPage() {
                     👤 بيانات العميل
                   </h4>
                   <div className="text-sm space-y-3">
-                    <div className="flex justify-between border-b pb-2"><span className="text-gray-500">الاسم:</span> <span className="font-medium">{selectedOrder.customers?.name}</span></div>
-                    <div className="flex justify-between border-b pb-2"><span className="text-gray-500">الهاتف:</span> <span className="font-medium font-mono" dir="ltr">{selectedOrder.customers?.phone}</span></div>
-                    <div className="flex justify-between border-b pb-2"><span className="text-gray-500">المدينة:</span> <span className="font-medium">{selectedOrder.customers?.city}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500">العنوان:</span> <span className="font-medium text-left max-w-[200px]">{selectedOrder.customers?.address}</span></div>
+                    <div className="flex justify-between border-b pb-2"><span className="text-gray-500">الاسم:</span> <span className="font-medium">{displayOrder.customers?.name}</span></div>
+                    <div className="flex justify-between border-b pb-2"><span className="text-gray-500">الهاتف:</span> <span className="font-medium font-mono" dir="ltr">{displayOrder.customers?.phone}</span></div>
+                    <div className="flex justify-between border-b pb-2"><span className="text-gray-500">المدينة:</span> <span className="font-medium">{displayOrder.customers?.city}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">العنوان:</span> <span className="font-medium text-left max-w-[200px]">{displayOrder.customers?.address}</span></div>
                   </div>
                 </div>
                 
@@ -1708,20 +1711,20 @@ export default function OrdersPage() {
                     حالة الطلب والشحن
                   </h4>
                   <div className="text-sm space-y-3">
-                    <div className="flex justify-between items-center border-b border-indigo-100 pb-2"><span className="text-gray-500">الحالة:</span> <span>{getStatusBadge(selectedOrder)}</span></div>
+                    <div className="flex justify-between items-center border-b border-indigo-100 pb-2"><span className="text-gray-500">الحالة:</span> <span>{getStatusBadge(displayOrder)}</span></div>
                     
                     <div className="flex justify-between items-center border-b border-indigo-100 pb-2">
                       <span className="text-gray-500">شركة الشحن:</span> 
-                      <span className="font-medium bg-white px-2 py-1 rounded border">{Array.isArray(selectedOrder.shipments) ? selectedOrder.shipments[0]?.courier || "-" : selectedOrder.shipments?.courier || "-"}</span>
+                      <span className="font-medium bg-white px-2 py-1 rounded border">{Array.isArray(displayOrder.shipments) ? displayOrder.shipments[0]?.courier || "-" : displayOrder.shipments?.courier || "-"}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-500">رقم التتبع:</span> 
-                      <span className="font-mono text-left bg-white px-2 py-1 rounded border" dir="ltr">{Array.isArray(selectedOrder.shipments) ? selectedOrder.shipments[0]?.tracking_number || "-" : selectedOrder.shipments?.tracking_number || "-"}</span>
+                      <span className="font-mono text-left bg-white px-2 py-1 rounded border" dir="ltr">{Array.isArray(displayOrder.shipments) ? displayOrder.shipments[0]?.tracking_number || "-" : displayOrder.shipments?.tracking_number || "-"}</span>
                     </div>
-                    {selectedOrder.notes && (
+                    {displayOrder.notes && (
                       <div className="mt-3 pt-3 border-t border-indigo-200">
                         <span className="text-gray-500 block mb-2 font-medium">ملاحظات الإدارة:</span>
-                        <p className="bg-white p-3 rounded-lg text-gray-700 text-sm leading-relaxed border shadow-inner">{selectedOrder.notes}</p>
+                        <p className="bg-white p-3 rounded-lg text-gray-700 text-sm leading-relaxed border shadow-inner">{displayOrder.notes}</p>
                       </div>
                     )}
                   </div>
@@ -1735,7 +1738,7 @@ export default function OrdersPage() {
                     📦 المنتجات المطلوبة
                   </h4>
                   <div className="border rounded-lg divide-y bg-gray-50/50 flex-1 overflow-y-auto max-h-[300px]">
-                    {selectedOrder.order_items?.map((item: any) => (
+                    {displayOrder.order_items?.map((item: any) => (
                       <div key={item.id} className="flex justify-between items-center p-4 hover:bg-white transition-colors">
                         <div>
                           <p className="font-bold text-gray-800">{item.product_variants?.products?.name}</p>
@@ -1752,12 +1755,13 @@ export default function OrdersPage() {
                 
                 <div className="flex justify-between items-center bg-gradient-to-l from-indigo-600 to-indigo-800 text-white p-5 rounded-xl font-bold shadow-lg mt-auto">
                   <span className="text-lg">إجمالي الطلب:</span>
-                  <span className="text-2xl">{Number(selectedOrder.total_amount).toLocaleString()} ج.م</span>
+                  <span className="text-2xl">{Number(displayOrder.total_amount).toLocaleString()} ج.م</span>
                 </div>
               </div>
 
             </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
       
