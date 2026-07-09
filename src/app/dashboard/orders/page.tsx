@@ -196,7 +196,8 @@ export default function OrdersPage() {
   const [bulkStatus, setBulkStatus] = useState("");
   const [bulkPaymentStatus, setBulkPaymentStatus] = useState("");
   const [newNotes, setNewNotes] = useState("");
-    const [shippingLoss, setShippingLoss] = useState("");
+  const [shippingLoss, setShippingLoss] = useState("");
+  const [customerRefusedShipping, setCustomerRefusedShipping] = useState(false);
   const [partialModalOpen, setPartialModalOpen] = useState(false);
   const [newAmountPaid, setNewAmountPaid] = useState("");
   const [newReturnedItems, setNewReturnedItems] = useState<any[]>([]);
@@ -271,6 +272,7 @@ export default function OrdersPage() {
     setNewCourier(shipment.courier || "");
     setNewTracking(shipment.tracking_number || "");
     setNewNotes(order.notes || "");
+    setCustomerRefusedShipping(false);
     setExpandedOrderId(order.id);
   };
 
@@ -662,7 +664,22 @@ export default function OrdersPage() {
       setShippingLoss(""); // reset after processing to prevent duplicates
     } else if (newStatus !== "cancelled") {
       // If order was cancelled with loss, but now changed to delivered/shipped, remove the shipping loss expense
-      await supabase.from("transactions").delete().like("description", `%${selectedOrder.id.substring(0,6)}%`);
+      await supabase.from("transactions").delete().like("description", `%${selectedOrder.id.substring(0,6)}%`).eq("tenant_id", tenant?.id);
+    }
+    
+    if (newStatus === "delivered" && selectedOrder.order_type === "exchange" && customerRefusedShipping) {
+      const shipFee = Number(selectedOrder.shipping_fee || 0);
+      if (shipFee > 0) {
+        await supabase.from("transactions").insert({
+          tenant_id: tenant?.id,
+          type: "expense",
+          amount: shipFee,
+          category: "مصروفات",
+          description: `خسارة شحن (رفض العميل) لاستبدال الطلب رقم ${selectedOrder.id.substring(0,6)}`,
+          transaction_date: new Date().toISOString()
+        });
+        computedNotes = computedNotes ? `${computedNotes} | العميل رفض دفع الشحن` : `العميل رفض دفع الشحن`;
+      }
     }
 
     if (newStatus === "partially_delivered") {
@@ -1468,6 +1485,20 @@ export default function OrdersPage() {
                                   type="number"
                                   className="h-8 w-32 text-xs px-2 border-red-200 focus-visible:ring-red-500 mt-1" 
                                 />
+                              )}
+                              {newStatus === "delivered" && order.order_type === "exchange" && (
+                                <div className="flex items-center gap-2 mt-2">
+                                  <input 
+                                    type="checkbox" 
+                                    id={`refuse-ship-${order.id}`} 
+                                    className="w-4 h-4 rounded border-gray-300 accent-red-600 cursor-pointer" 
+                                    checked={customerRefusedShipping} 
+                                    onChange={(e) => setCustomerRefusedShipping(e.target.checked)} 
+                                  />
+                                  <label htmlFor={`refuse-ship-${order.id}`} className="text-[11px] text-red-600 font-bold whitespace-nowrap cursor-pointer">
+                                    رفض دفع الشحن (خسارة)
+                                  </label>
+                                </div>
                               )}
 
                               {!["pending", "returned_inventory", "shipped", "returned_shipping", "cancelled", "delivered", "partially_delivered"].includes(newStatus) && (
