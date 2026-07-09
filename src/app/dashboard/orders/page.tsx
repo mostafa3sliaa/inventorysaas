@@ -224,6 +224,8 @@ export default function OrdersPage() {
 
   const [bulkStatus, setBulkStatus] = useState("");
   const [bulkPaymentStatus, setBulkPaymentStatus] = useState("");
+  const [bulkCourier, setBulkCourier] = useState("");
+  const [bulkShippingFee, setBulkShippingFee] = useState("");
   const [newNotes, setNewNotes] = useState("");
   const [shippingLoss, setShippingLoss] = useState("");
   const [customerRefusedShipping, setCustomerRefusedShipping] = useState(false);
@@ -376,11 +378,42 @@ export default function OrdersPage() {
             }
           }
         }
+        
+        // Handle bulk shipping updates
+        if (bulkCourier || bulkShippingFee !== "") {
+          for (const orderId of selectedOrderIds) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) continue;
+            
+            const orderUpdates: any = {};
+            if (bulkShippingFee !== "") {
+               orderUpdates.shipping_fee = Number(bulkShippingFee) || 0;
+            }
+            if (Object.keys(orderUpdates).length > 0) {
+               await supabase.from("orders").update(orderUpdates).eq("id", order.id);
+            }
+            
+            if (bulkCourier) {
+              const { data: shipments } = await supabase.from("shipments").select("id").eq("order_id", order.id);
+              if (shipments && shipments.length > 0) {
+                 await supabase.from("shipments").update({ courier: bulkCourier }).eq("id", shipments[0].id);
+              } else {
+                 await supabase.from("shipments").insert({
+                   order_id: order.id,
+                   courier: bulkCourier,
+                   tenant_id: tenant?.id
+                 });
+              }
+            }
+          }
+        }
 
         toast.success("تم تطبيق التغييرات على الطلبات المحددة بنجاح");
         fetchOrders();
         setSelectedOrderIds([]);
         setBulkStatus("");
+        setBulkCourier("");
+        setBulkShippingFee("");
         setIsSubmitting(false);
       }
     });
@@ -1503,11 +1536,26 @@ export default function OrdersPage() {
               <option value="shipped">في الشحن</option>
               <option value="delivered">تم التوصيل</option>
             </select>
+            
+            <Input 
+              placeholder="شركة الشحن..." 
+              className="h-9 w-32 px-3 text-sm"
+              value={bulkCourier}
+              onChange={(e) => setBulkCourier(e.target.value)}
+            />
+            
+            <Input 
+              placeholder="سعر الشحن..." 
+              type="number"
+              className="h-9 w-28 px-3 text-sm"
+              value={bulkShippingFee}
+              onChange={(e) => setBulkShippingFee(e.target.value)}
+            />
 
             <Button 
               size="sm" 
               onClick={handleBulkApply} 
-              disabled={isSubmitting || !bulkStatus} 
+              disabled={isSubmitting || (!bulkStatus && !bulkCourier && bulkShippingFee === "")} 
               className="bg-indigo-600 hover:bg-indigo-700 h-9"
             >
               تطبيق
