@@ -322,7 +322,7 @@ export default function OrdersPage() {
   };
 
   const handleBulkApply = async () => {
-    if (!bulkStatus && !bulkPaymentStatus) return;
+    if (!bulkStatus && !bulkPaymentStatus && !bulkCourier && bulkShippingFee === "") return;
     
     setConfirmDialog({
       isOpen: true,
