@@ -1151,17 +1151,18 @@ export default function OrdersPage() {
         />
         
         <Dialog open={isOpen} onOpenChange={handleCloseDialog}>
-          <DialogContent className="sm:max-w-[900px] border-0 shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col" dir="rtl">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-indigo-700 dark:text-indigo-400 border-b pb-4">
+          <DialogContent className="sm:max-w-[900px] border-0 shadow-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden" dir="rtl">
+            <DialogHeader className="px-6 py-4 border-b">
+              <DialogTitle className="text-xl font-bold text-indigo-700 dark:text-indigo-400">
                 {editingOrder ? "تعديل الطلب" : "إضافة طلب جديد"}
               </DialogTitle>
-              <DialogDescription className="text-gray-500 mt-2">
+              <DialogDescription className="text-gray-500 mt-1">
                 أدخل كافة بيانات العميل وتفاصيل الطلب.
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleAddOrder} className="mt-4 space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
+            <form onSubmit={handleAddOrder} className="flex flex-col flex-1 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="grid md:grid-cols-2 gap-6">
                 
                 {/* Customer Details */}
                 <div className="space-y-4 bg-gray-50 p-4 rounded-lg border">
@@ -1300,8 +1301,9 @@ export default function OrdersPage() {
                   </div>
                 </div>
 
+                </div>
               </div>
-              <DialogFooter className="flex gap-2 sm:justify-end">
+              <DialogFooter className="px-6 py-4 border-t bg-gray-50 flex gap-2 sm:justify-end">
                 <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
                   إلغاء
                 </Button>
