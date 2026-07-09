@@ -651,6 +651,14 @@ export default function OrdersPage() {
     let finalPaymentStatus = selectedOrder.payment_status;
     let computedNotes = newNotes;
 
+    if (computedNotes) {
+      computedNotes = computedNotes
+        .split('|')
+        .map(n => n.trim())
+        .filter(n => !n.startsWith('خسارة شحن:') && n !== 'العميل رفض دفع الشحن' && n.length > 0)
+        .join(' | ');
+    }
+
     const isStockDeducted = (status: string) => {
       return !["cancelled", "returned_inventory", "returned_shipping"].includes(status);
     };
@@ -1692,7 +1700,7 @@ export default function OrdersPage() {
                     حالة الطلب والشحن
                   </h4>
                   <div className="text-sm space-y-3">
-                    <div className="flex justify-between items-center border-b border-indigo-100 pb-2"><span className="text-gray-500">الحالة:</span> <span>{getStatusBadge(selectedOrder.status)}</span></div>
+                    <div className="flex justify-between items-center border-b border-indigo-100 pb-2"><span className="text-gray-500">الحالة:</span> <span>{getStatusBadge(selectedOrder)}</span></div>
                     
                     <div className="flex justify-between items-center border-b border-indigo-100 pb-2">
                       <span className="text-gray-500">شركة الشحن:</span> 
