@@ -402,7 +402,7 @@ export default function OrdersPage() {
     }))
   );
 
-  const handleOrderItemChange = (index: number, field: string, value: string) => {
+  const handleOrderItemChange = (index: number, field: string, value: string, e?: React.ChangeEvent<HTMLInputElement>) => {
     const newItems = [...orderItems];
     
     if (field === "quantity") {
@@ -419,9 +419,12 @@ export default function OrdersPage() {
           const maxAllowed = Math.max(0, Number(v.stock_quantity) - otherQty);
           let numVal = Number(value);
           if (numVal > maxAllowed) {
-            toast.error(`الكمية القصوى المتاحة هي ${maxAllowed}`);
+            toast.error(`عفواً، أقصى كمية متاحة في المخزن هي ${maxAllowed}`);
             numVal = maxAllowed;
             value = numVal.toString();
+            if (e && e.target) {
+              e.target.value = value;
+            }
           }
         }
       }
@@ -1237,7 +1240,7 @@ export default function OrdersPage() {
                                 return Math.max(1, Number(v.stock_quantity) - otherQty);
                               })()}
                               value={item.quantity} 
-                              onChange={(e) => handleOrderItemChange(index, "quantity", e.target.value)} 
+                              onChange={(e) => handleOrderItemChange(index, "quantity", e.target.value, e)} 
                               onFocus={(e) => e.target.select()}
                               required 
                               placeholder="الكمية"

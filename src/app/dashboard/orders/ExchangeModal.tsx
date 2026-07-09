@@ -44,7 +44,7 @@ export default function ExchangeModal({ open, onOpenChange, order, tenantId, all
 
   const addNewItem = () => setNewItems([...newItems, { variantId: "", quantity: 1, unitPrice: "" }]);
   const removeNewItem = (idx: number) => setNewItems(newItems.filter((_, i) => i !== idx));
-  const handleNewItemChange = (idx: number, field: string, val: any) => {
+  const handleNewItemChange = (idx: number, field: string, val: any, e?: React.ChangeEvent<HTMLInputElement>) => {
     const newArr = [...newItems];
     
     if (field === "quantity") {
@@ -61,9 +61,12 @@ export default function ExchangeModal({ open, onOpenChange, order, tenantId, all
           const maxAllowed = Math.max(0, Number(v.stock_quantity) - otherQty);
           let numVal = parseInt(val);
           if (numVal > maxAllowed) {
-            toast.error(`الكمية القصوى المتاحة هي ${maxAllowed}`);
+            toast.error(`عفواً، أقصى كمية متاحة في المخزن هي ${maxAllowed}`);
             numVal = maxAllowed;
             val = numVal.toString();
+            if (e && e.target) {
+              e.target.value = val;
+            }
           }
         }
       }
@@ -318,7 +321,7 @@ export default function ExchangeModal({ open, onOpenChange, order, tenantId, all
                               })()}
                               placeholder="1" 
                               value={item.quantity} 
-                              onChange={e => handleNewItemChange(idx, "quantity", e.target.value)}
+                              onChange={e => handleNewItemChange(idx, "quantity", e.target.value, e)}
                               className="h-8 w-16 text-center border-0 focus-visible:ring-0 px-1 text-sm"
                             />
                             <span className="text-xs text-gray-500">كمية</span>
