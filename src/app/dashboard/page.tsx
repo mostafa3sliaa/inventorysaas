@@ -27,120 +27,103 @@ export default function DashboardPage() {
   }, []);
 
   const fetchDashboardData = async () => {
-    // Fetch tenant
+    // Fetch tenant first (needed for other queries)
     const { data: tenantData } = await supabase.from("tenants").select("*").single();
     if (tenantData) setTenant(tenantData);
+    if (!tenantData) return;
 
-    // 1. Low Stock
-    const { data: lowStockData } = await supabase
-      .from("product_variants")
-      .select(`*, products ( name )`);
-      
-    if (lowStockData) {
-      const lowStock = lowStockData.filter(v => {
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Run all queries in parallel
+    const [
+      lowStockRes,
+      salesRes,
+      pendingRes,
+      totalOrdersRes,
+      recentOrdersRes,
+      suppliersRes,
+      paidOrdersRes
+    ] = await Promise.all([
+      // 1. Low Stock & Inventory Value
+      supabase.from("product_variants").select(`*, products ( name )`),
+      // 2. Sales data (last 30 days)
+      supabase.from('orders').select('total_amount, shipping_fee, created_at')
+        .eq('tenant_id', tenantData.id)
+        .gte('created_at', thirtyDaysAgo.toISOString())
+        .not('status', 'in', '("cancelled","returned_inventory","returned_shipping")')
+        .or('is_deleted.is.null,is_deleted.eq.false'),
+      // 3. Pending Orders count
+      supabase.from('orders').select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantData.id)
+        .eq('status', 'pending')
+        .or('is_deleted.is.null,is_deleted.eq.false'),
+      // 4. Total Orders count
+      supabase.from('orders').select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantData.id)
+        .or('is_deleted.is.null,is_deleted.eq.false'),
+      // 5. Recent Orders
+      supabase.from('orders').select(`id, total_amount, created_at, customers ( name )`)
+        .eq('tenant_id', tenantData.id)
+        .or('is_deleted.is.null,is_deleted.eq.false')
+        .order('created_at', { ascending: false })
+        .limit(5),
+      // 6. Supplier Dues
+      supabase.from('suppliers').select('balance')
+        .eq('tenant_id', tenantData.id)
+        .gt('balance', 0),
+      // 7. Vault Profit
+      supabase.from('orders')
+        .select(`id, is_deleted, total_amount, shipping_fee, order_items ( quantity, unit_price, product_variants ( normal_cost ) )`)
+        .in('payment_status', ['paid', 'partial'])
+        .eq('tenant_id', tenantData.id)
+    ]);
+
+    // Process results
+    let newMetrics: any = {};
+
+    // Low Stock
+    if (lowStockRes.data) {
+      const lowStock = lowStockRes.data.filter(v => {
         const baseline = Number(v.baseline_stock) || 1;
         const ratio = Number(v.stock_quantity) / baseline;
         return ratio <= 0.20;
       });
       setLowStockVariants(lowStock);
-      
-      // Calculate Inventory Value
-      const invValue = lowStockData.reduce((acc, curr) => acc + (Number(curr.stock_quantity) * Number(curr.normal_cost)), 0);
-      setMetrics(prev => ({ ...prev, inventoryValue: invValue }));
+      newMetrics.inventoryValue = lowStockRes.data.reduce((acc, curr) => acc + (Number(curr.stock_quantity) * Number(curr.normal_cost)), 0);
     }
 
-    // 2. Sales & Pending Orders
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-    
-    // Total Sales this month (last 30 days for chart)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    const { data: salesData } = await supabase
-      .from('orders')
-      .select('total_amount, shipping_fee, created_at')
-      .eq('tenant_id', tenantData?.id)
-      .gte('created_at', thirtyDaysAgo.toISOString())
-      .not('status', 'in', '("cancelled","returned_inventory","returned_shipping")')
-      .or('is_deleted.is.null,is_deleted.eq.false');
-      
-    if (salesData) {
-      // Calculate total for this month only
-      const thisMonthSales = salesData.filter(s => new Date(s.created_at) >= new Date(startOfMonth));
-      const sales = thisMonthSales.reduce((acc, curr) => acc + (Number(curr.total_amount) - Number(curr.shipping_fee || 0)), 0);
-      setMetrics(prev => ({ ...prev, totalSales: sales }));
+    // Sales
+    if (salesRes.data) {
+      const thisMonthSales = salesRes.data.filter(s => new Date(s.created_at) >= new Date(startOfMonth));
+      newMetrics.totalSales = thisMonthSales.reduce((acc, curr) => acc + (Number(curr.total_amount) - Number(curr.shipping_fee || 0)), 0);
 
-      // Process chart data (group by date)
       const dailySales: Record<string, number> = {};
-      salesData.forEach(order => {
+      salesRes.data.forEach(order => {
         const date = new Date(order.created_at).toLocaleDateString('en-CA');
         if (!dailySales[date]) dailySales[date] = 0;
         dailySales[date] += (Number(order.total_amount) - Number(order.shipping_fee || 0));
       });
-
-      const formattedChartData = Object.keys(dailySales)
-        .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
-        .map(date => ({ date, amount: dailySales[date] }));
-        
-      setChartData(formattedChartData);
+      setChartData(Object.keys(dailySales).sort((a, b) => new Date(a).getTime() - new Date(b).getTime()).map(date => ({ date, amount: dailySales[date] })));
     }
 
-    // Pending Orders
-    const { count: pendingCount } = await supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('tenant_id', tenantData?.id)
-      .eq('status', 'pending')
-      .or('is_deleted.is.null,is_deleted.eq.false');
-      
-    if (pendingCount !== null) {
-      setMetrics(prev => ({ ...prev, pendingOrders: pendingCount }));
-    }
-
-    // Total Orders Count for serial numbering
-    const { count: totalOrdersCount } = await supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('tenant_id', tenantData?.id)
-      .or('is_deleted.is.null,is_deleted.eq.false');
-      
-    setMetrics(prev => ({ ...prev, totalOrdersCount: totalOrdersCount || 0 }));
+    // Counts
+    if (pendingRes.count !== null) newMetrics.pendingOrders = pendingRes.count;
+    newMetrics.totalOrdersCount = totalOrdersRes.count || 0;
 
     // Recent Orders
-    const { data: recentOrdersData } = await supabase
-      .from('orders')
-      .select(`id, total_amount, created_at, customers ( name )`)
-      .eq('tenant_id', tenantData?.id)
-      .or('is_deleted.is.null,is_deleted.eq.false')
-      .order('created_at', { ascending: false })
-      .limit(5);
-      
-    if (recentOrdersData) {
-      setRecentOrders(recentOrdersData);
+    if (recentOrdersRes.data) setRecentOrders(recentOrdersRes.data);
+
+    // Supplier Dues
+    if (suppliersRes.data) {
+      newMetrics.supplierDues = suppliersRes.data.reduce((acc, curr) => acc + Number(curr.balance), 0);
     }
 
-    // 3. Supplier Dues
-    const { data: suppliersData } = await supabase
-      .from('suppliers')
-      .select('balance')
-      .eq('tenant_id', tenantData?.id)
-      .gt('balance', 0);
-      
-    if (suppliersData) {
-      const dues = suppliersData.reduce((acc, curr) => acc + Number(curr.balance), 0);
-      setMetrics(prev => ({ ...prev, supplierDues: dues }));
-    }
-
-    // 4. Vault Profit (Net Profit of Paid Orders)
-    const { data: paidOrders } = await supabase
-      .from('orders')
-      .select(`id, is_deleted, total_amount, shipping_fee, order_items ( quantity, unit_price, product_variants ( normal_cost ) )`)
-      .in('payment_status', ['paid', 'partial'])
-      .eq('tenant_id', tenantData.id);
-      
-    if (paidOrders) {
+    // Vault Profit
+    if (paidOrdersRes.data) {
       let vaultProfit = 0;
-      paidOrders.filter((o: any) => o.is_deleted !== true).forEach(order => {
+      paidOrdersRes.data.filter((o: any) => o.is_deleted !== true).forEach(order => {
         let orderRevenue = 0;
         let totalCost = 0;
         order.order_items?.forEach((item: any) => {
@@ -160,8 +143,11 @@ export default function DashboardPage() {
           
         vaultProfit += (itemRevenue - totalCost);
       });
-      setMetrics(prev => ({ ...prev, vaultProfit }));
+      newMetrics.vaultProfit = vaultProfit;
     }
+
+    // Set all metrics at once (single state update instead of 6 separate ones)
+    setMetrics(prev => ({ ...prev, ...newMetrics }));
   };
 
   return (

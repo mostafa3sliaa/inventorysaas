@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Table, 
   TableBody, 
@@ -63,56 +63,64 @@ export default function InventoryPage() {
     setLoading(false);
   };
 
-  const getShortageStats = (variantProductName: string, variantNameName: string) => {
-    let ordersCount = 0;
-    let deficitQty = 0;
-
+  // Precompute shortage stats once for ALL variants (instead of per-variant in render)
+  const shortageMap = useMemo(() => {
+    const map: Record<string, { ordersCount: number; deficitQty: number }> = {};
+    
     orders.forEach(order => {
       const notes = order.notes || "";
       if (!notes.includes("[نواقص]")) return;
 
-      let matchedInOrder = false;
+      const matchedKeys = new Set<string>();
 
-      const oosRegexFlexible = /\[نواقص:\s*عجز كمية:\s*(.*?)\s*\(المطلب:\s*(\d+)\s*،\s*المتاح:\s*(\d+)\)\]/g;
-      const oosRegexFlexible2 = /\[نواقص:\s*عجز كمية:\s*(.*?)\s*\(المطلوب?:\s*(\d+)\s*،\s*المتاح:\s*(\d+)\)\]/g;
+      const oosRegex = /\[نواقص:\s*عجز كمية:\s*(.*?)\s*\((?:المطلب|المطلوب):\s*(\d+)\s*،\s*المتاح:\s*(\d+)\)\]/g;
       let oosMatch;
-      while ((oosMatch = oosRegexFlexible2.exec(notes)) !== null) {
-        const fullVariantName = oosMatch[1].trim();
+      while ((oosMatch = oosRegex.exec(notes)) !== null) {
+        const fullName = oosMatch[1].trim();
         const reqQty = parseInt(oosMatch[2], 10) || 0;
         const availQty = parseInt(oosMatch[3], 10) || 0;
         const deficit = Math.max(0, reqQty - availQty);
-
-        const isMatch = fullVariantName.toLowerCase().includes(variantProductName.toLowerCase()) && 
-                        (variantNameName === "أساسي" || variantNameName === "-" || fullVariantName.toLowerCase().includes(variantNameName.toLowerCase()));
-
-        if (isMatch && deficit > 0) {
-          deficitQty += deficit;
-          matchedInOrder = true;
+        if (deficit > 0) {
+          const key = fullName.toLowerCase();
+          if (!map[key]) map[key] = { ordersCount: 0, deficitQty: 0 };
+          map[key].deficitQty += deficit;
+          matchedKeys.add(key);
         }
       }
-      oosRegexFlexible2.lastIndex = 0;
 
       const unmatchedRegex = /\[نواقص:\s*منتج غير متوفر:\s*(.*?)\s*-\s*الكمية:\s*(\d+)\]/g;
       let match;
       while ((match = unmatchedRegex.exec(notes)) !== null) {
-        const rawProductName = match[1].toLowerCase();
+        const rawName = match[1].trim();
         const qty = parseInt(match[2], 10) || 0;
-
-        const isMatch = rawProductName.includes(variantProductName.toLowerCase()) && 
-                        (variantNameName === "أساسي" || variantNameName === "-" || rawProductName.includes(variantNameName.toLowerCase()));
-
-        if (isMatch) {
-          deficitQty += qty;
-          matchedInOrder = true;
+        if (qty > 0) {
+          const key = rawName.toLowerCase();
+          if (!map[key]) map[key] = { ordersCount: 0, deficitQty: 0 };
+          map[key].deficitQty += qty;
+          matchedKeys.add(key);
         }
       }
-      unmatchedRegex.lastIndex = 0;
 
-      if (matchedInOrder) {
-        ordersCount++;
-      }
+      matchedKeys.forEach(k => { map[k].ordersCount++; });
     });
+    
+    return map;
+  }, [orders]);
 
+  const getShortageStats = (variantProductName: string, variantNameStr: string) => {
+    let ordersCount = 0;
+    let deficitQty = 0;
+    const pName = variantProductName.toLowerCase();
+    const vName = variantNameStr.toLowerCase();
+    
+    for (const [key, value] of Object.entries(shortageMap)) {
+      const isMatch = key.includes(pName) && 
+                      (vName === "أساسي" || vName === "-" || key.includes(vName));
+      if (isMatch) {
+        ordersCount += value.ordersCount;
+        deficitQty += value.deficitQty;
+      }
+    }
     return { ordersCount, deficitQty };
   };
 

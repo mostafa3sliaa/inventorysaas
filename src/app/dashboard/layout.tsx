@@ -149,7 +149,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [pathname]);
+  }, []);
 
   const notificationCount = lowStockVariants.length + (pendingOrdersCount > 0 ? 1 : 0) + (supplierDues > 0 ? 1 : 0);
 

@@ -6,9 +6,7 @@ import { Download, TrendingUp, TrendingDown, DollarSign, FileText, Sheet } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
-import ExcelJS from "exceljs";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
+
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from "recharts";
 
 export default function ReportsPage() {
@@ -65,6 +63,7 @@ export default function ReportsPage() {
 
     if (error) { toast.error("حدث خطأ أثناء التصدير"); return; }
 
+    const ExcelJS = (await import("exceljs")).default;
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("تقرير المبيعات", { views: [{ rightToLeft: true }] });
 
@@ -109,6 +108,8 @@ export default function ReportsPage() {
 
     if (error) { toast.error("حدث خطأ أثناء التصدير"); return; }
 
+    const jsPDF = (await import("jspdf")).default;
+    await import("jspdf-autotable");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     doc.setFont("helvetica");
     doc.setFontSize(20);

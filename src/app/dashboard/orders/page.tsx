@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Table, 
@@ -715,7 +715,7 @@ export default function OrdersPage() {
     return searchMatch && shippingCompanyMatch;
   };
 
-  const baseOrdersForCounts = orders.filter((order) => {
+  const baseOrdersForCounts = useMemo(() => orders.filter((order) => {
     if (activeTab === "scan") {
       return scannedOrderIds.includes(order.id);
     }
@@ -723,9 +723,9 @@ export default function OrdersPage() {
     const tabMatch = activeTab === "deleted" ? isDeleted : !isDeleted;
     
     return tabMatch && isOrderMatchingSearchAndShipping(order);
-  });
+  }), [orders, activeTab, scannedOrderIds, searchTerm, shippingCompanyFilter]);
 
-  const filteredOrders = baseOrdersForCounts.filter((order) => {
+  const filteredOrders = useMemo(() => baseOrdersForCounts.filter((order) => {
     const isOrderShortage = !!(order.notes && order.notes.includes('[نواقص]'));
     
     if (statusFilter === "pending") {
@@ -739,9 +739,9 @@ export default function OrdersPage() {
                         order.status === statusFilter || 
                         (statusFilter === "cancelled" && ["returned_inventory", "returned_shipping"].includes(order.status));
     return statusMatch;
-  });
+  }), [baseOrdersForCounts, statusFilter]);
 
-  const allVariants = products.flatMap(p => 
+  const allVariants = useMemo(() => products.flatMap(p => 
     (p.product_variants || []).map((v: any) => ({
       id: v.id,
       productName: p.name,
@@ -750,7 +750,9 @@ export default function OrdersPage() {
       stock_quantity: v.stock_quantity,
       cost_price: v.normal_cost
     }))
-  );
+  ), [products]);
+
+  const shortageSummary = useMemo(() => getShortageSummary(orders), [orders]);
 
   const handleOrderItemChange = (index: number, field: string, value: string, e?: React.ChangeEvent<HTMLInputElement>) => {
     const newItems = [...orderItems];
@@ -1608,7 +1610,7 @@ export default function OrdersPage() {
 
             <div className="flex-1 overflow-y-auto py-4 min-h-[200px] max-h-[75vh] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-rose-200 [&::-webkit-scrollbar-thumb]:rounded-full pr-1">
               {(() => {
-                const shortages = getShortageSummary(orders);
+                const shortages = shortageSummary;
                 if (shortages.length === 0) {
                   return (
                     <div className="flex flex-col items-center justify-center py-10 space-y-3 bg-green-50/50 rounded-xl border border-dashed border-green-200">
@@ -1663,7 +1665,7 @@ export default function OrdersPage() {
 
             <DialogFooter className="pt-3 border-t border-gray-100 flex gap-2 sm:justify-end shrink-0">
               {(() => {
-                const shortages = getShortageSummary(orders);
+                const shortages = shortageSummary;
                 return (
                   <>
                     <Button 

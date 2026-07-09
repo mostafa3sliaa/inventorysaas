@@ -67,32 +67,34 @@ export default function TreasuryPage() {
     if (!tenant?.id) return;
     
     setLoading(true);
-    const { data, error } = await supabase
-      .from("transactions")
-      .select("*")
-      .eq("tenant_id", tenant.id)
-      .order("transaction_date", { ascending: false });
+    
+    const [transactionsRes, paidOrdersRes] = await Promise.all([
+      supabase
+        .from("transactions")
+        .select("*")
+        .eq("tenant_id", tenant.id)
+        .order("transaction_date", { ascending: false }),
+      supabase
+        .from('orders')
+        .select(`id, is_deleted, total_amount, shipping_fee, payment_status, order_items ( quantity, unit_price, product_variants ( normal_cost ) )`)
+        .in('payment_status', ['paid', 'partial', 'refunded'])
+        .eq('tenant_id', tenant.id)
+    ]);
 
-    if (error) {
-      if (error.code === "42P01") {
+    if (transactionsRes.error) {
+      if (transactionsRes.error.code === "42P01") {
         toast.error("عذراً، يبدو أن جدول الخزنة (transactions) لم يتم إنشاؤه بعد في قاعدة البيانات.");
       } else {
         toast.error("فشل في جلب بيانات الخزنة");
       }
     } else {
-      setTransactions(data || []);
+      setTransactions(transactionsRes.data || []);
     }
 
     // Fetch Vault Profit from paid orders
-    const { data: paidOrders } = await supabase
-      .from('orders')
-      .select(`id, is_deleted, total_amount, shipping_fee, payment_status, order_items ( quantity, unit_price, product_variants ( normal_cost ) )`)
-      .in('payment_status', ['paid', 'partial', 'refunded'])
-      .eq('tenant_id', tenant.id);
-      
-    if (paidOrders) {
+    if (paidOrdersRes.data) {
       let profit = 0;
-      paidOrders.filter((o: any) => o.is_deleted !== true).forEach(order => {
+      paidOrdersRes.data.filter((o: any) => o.is_deleted !== true).forEach(order => {
         let orderRevenue = 0;
         let totalCost = 0;
         order.order_items?.forEach((item: any) => {
