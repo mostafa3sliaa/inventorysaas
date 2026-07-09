@@ -302,32 +302,9 @@ export default function OrdersPage() {
             const order = orders.find(o => o.id === orderId);
             if (!order) continue;
 
-            const currentDeducted = isStockDeducted(order.status || "pending");
-            const finalDeducted = isStockDeducted(bulkStatus);
-
-            if (currentDeducted && !finalDeducted) {
-              // Restore stock
-              const items = order.order_items;
-              if (items && items.length > 0) {
-                for (const item of items) {
-                  const { data: variant } = await supabase.from("product_variants").select("stock_quantity").eq("id", item.product_variant_id).single();
-                  if (variant) {
-                    await supabase.from("product_variants").update({ stock_quantity: Number(variant.stock_quantity) + Number(item.quantity) }).eq("id", item.product_variant_id);
-                  }
-                }
-              }
-            } else if (!currentDeducted && finalDeducted) {
-              // Deduct stock
-              const items = order.order_items;
-              if (items && items.length > 0) {
-                for (const item of items) {
-                  const { data: variant } = await supabase.from("product_variants").select("stock_quantity").eq("id", item.product_variant_id).single();
-                  if (variant) {
-                    await supabase.from("product_variants").update({ stock_quantity: Math.max(0, Number(variant.stock_quantity) - Number(item.quantity)) }).eq("id", item.product_variant_id);
-                  }
-                }
-              }
-            }
+            // Notice: Manual stock update loops were removed here.
+            // The database trigger 'trigger_update_inventory_on_order' automatically handles 
+            // inventory restoration and deduction when the order status changes.
             
             const orderSource = ["returned_inventory", "pending"].includes(bulkStatus) ? "stock_in_inventory" : "stock_in_shipping";
             await supabase.from("orders").update({ status: bulkStatus, source: orderSource }).eq("id", order.id);
@@ -673,25 +650,9 @@ export default function OrdersPage() {
     const currentDeducted = isStockDeducted(selectedOrder.status || "pending");
     const finalDeducted = isStockDeducted(dbStatus);
 
-    if (currentDeducted && !finalDeducted) {
-      // Need to restore full stock (moving to cancelled/returned state)
-      const items = selectedOrder.order_items || [];
-      for (const item of items) {
-        const { data: variant } = await supabase.from("product_variants").select("stock_quantity").eq("id", item.product_variant_id).single();
-        if (variant) {
-          await supabase.from("product_variants").update({ stock_quantity: Number(variant.stock_quantity) + Number(item.quantity) }).eq("id", item.product_variant_id);
-        }
-      }
-    } else if (!currentDeducted && finalDeducted) {
-      // Need to DEDUCT full stock (moving from cancelled back to active state)
-      const items = selectedOrder.order_items || [];
-      for (const item of items) {
-        const { data: variant } = await supabase.from("product_variants").select("stock_quantity").eq("id", item.product_variant_id).single();
-        if (variant) {
-          await supabase.from("product_variants").update({ stock_quantity: Number(variant.stock_quantity) - Number(item.quantity) }).eq("id", item.product_variant_id);
-        }
-      }
-    }
+    // Notice: We removed the manual stock update loop here.
+    // The database trigger 'trigger_update_inventory_on_order' automatically handles 
+    // inventory restoration and deduction when the order status changes.
 
     // Process shipping loss independently from stock changes
     if (newStatus === "cancelled") {
@@ -786,6 +747,7 @@ export default function OrdersPage() {
     const { error: orderError } = await supabase.from("orders").update(updateObj).eq("id", selectedOrder.id);
     if (orderError) {
       console.error(orderError);
+      toast.error(orderError.message || "حدث خطأ أثناء تحديث حالة الطلب");
       setIsSubmitting(false);
       return;
     }
