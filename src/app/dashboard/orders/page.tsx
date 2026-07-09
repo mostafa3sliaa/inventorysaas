@@ -398,19 +398,21 @@ export default function OrdersPage() {
     return searchMatch && shippingCompanyMatch;
   };
 
-  const filteredOrders = orders.filter((order) => {
+  const baseOrdersForCounts = orders.filter((order) => {
     if (activeTab === "scan") {
       return scannedOrderIds.includes(order.id);
     }
-    
-    const statusMatch = statusFilter === "all" || 
-                        order.status === statusFilter || 
-                        (statusFilter === "cancelled" && ["returned_inventory", "returned_shipping"].includes(order.status));
-           
     const isDeleted = order.is_deleted === true;
     const tabMatch = activeTab === "deleted" ? isDeleted : !isDeleted;
     
-    return tabMatch && statusMatch && isOrderMatchingSearchAndShipping(order);
+    return tabMatch && isOrderMatchingSearchAndShipping(order);
+  });
+
+  const filteredOrders = baseOrdersForCounts.filter((order) => {
+    const statusMatch = statusFilter === "all" || 
+                        order.status === statusFilter || 
+                        (statusFilter === "cancelled" && ["returned_inventory", "returned_shipping"].includes(order.status));
+    return statusMatch;
   });
 
   const allVariants = products.flatMap(p => 
@@ -1522,11 +1524,11 @@ export default function OrdersPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">الحالة</SelectItem>
-                    <SelectItem value="pending">{`في الانتظار (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'pending' && isOrderMatchingSearchAndShipping(o)).length})`}</SelectItem>
-                    <SelectItem value="shipped">{`في الشحن (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'shipped' && isOrderMatchingSearchAndShipping(o)).length})`}</SelectItem>
-                    <SelectItem value="delivered">{`تم التوصيل (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'delivered' && isOrderMatchingSearchAndShipping(o)).length})`}</SelectItem>
-                    <SelectItem value="partially_delivered">{`توصيل جزئي (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && o.status === 'partially_delivered' && isOrderMatchingSearchAndShipping(o)).length})`}</SelectItem>
-                    <SelectItem value="cancelled">{`ملغي / مرتجع (${orders.filter(o => (activeTab === 'deleted' ? o.is_deleted : !o.is_deleted) && ['cancelled', 'returned_inventory', 'returned_shipping'].includes(o.status) && isOrderMatchingSearchAndShipping(o)).length})`}</SelectItem>
+                    <SelectItem value="pending">{`في الانتظار (${baseOrdersForCounts.filter(o => o.status === 'pending').length})`}</SelectItem>
+                    <SelectItem value="shipped">{`في الشحن (${baseOrdersForCounts.filter(o => o.status === 'shipped').length})`}</SelectItem>
+                    <SelectItem value="delivered">{`تم التوصيل (${baseOrdersForCounts.filter(o => o.status === 'delivered').length})`}</SelectItem>
+                    <SelectItem value="partially_delivered">{`توصيل جزئي (${baseOrdersForCounts.filter(o => o.status === 'partially_delivered').length})`}</SelectItem>
+                    <SelectItem value="cancelled">{`ملغي / مرتجع (${baseOrdersForCounts.filter(o => ['cancelled', 'returned_inventory', 'returned_shipping'].includes(o.status)).length})`}</SelectItem>
                   </SelectContent>
                 </Select>
               </TableHead>
