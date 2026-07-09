@@ -1151,63 +1151,63 @@ export default function OrdersPage() {
         />
         
         <Dialog open={isOpen} onOpenChange={handleCloseDialog}>
-          <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[90vh] overflow-y-auto flex flex-col [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" dir="rtl">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-indigo-900 border-b pb-4">
+          <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[95vh] !p-4 !gap-2 overflow-y-hidden flex flex-col [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" dir="rtl">
+            <DialogHeader className="pb-2 border-b">
+              <DialogTitle className="text-xl font-bold text-indigo-900">
                 {editingOrder ? "تعديل الطلب" : "إضافة طلب جديد"}
               </DialogTitle>
-              <DialogDescription className="text-gray-500 mt-2">
+              <DialogDescription className="text-gray-500 text-xs mt-1">
                 أدخل كافة بيانات العميل وتفاصيل الطلب.
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleAddOrder} className="mt-2 space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
+            <form onSubmit={handleAddOrder} className="mt-1 space-y-3">
+              <div className="grid md:grid-cols-2 gap-4">
                 
                 {/* Customer Details */}
-                <div className="space-y-4 bg-gray-50 p-4 rounded-lg border">
-                  <h3 className="font-bold text-lg text-gray-800 border-b pb-2 flex items-center gap-2">
+                <div className="space-y-3 bg-gray-50 p-3 rounded-lg border">
+                  <h3 className="font-bold text-sm text-gray-800 border-b pb-1 flex items-center gap-2">
                     👤 بيانات العميل
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="customerName">الاسم بالكامل</Label>
-                      <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required placeholder="مثال: أحمد محمد" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid gap-1">
+                      <Label htmlFor="customerName" className="text-xs">الاسم بالكامل</Label>
+                      <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required placeholder="أحمد محمد" className="h-8 text-sm" />
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="customerPhone">رقم الهاتف</Label>
-                      <Input id="customerPhone" dir="ltr" className="text-right" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} required placeholder="01xxxxxxxxx" />
+                    <div className="grid gap-1">
+                      <Label htmlFor="customerPhone" className="text-xs">رقم الهاتف</Label>
+                      <Input id="customerPhone" dir="ltr" className="text-right h-8 text-sm" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} required placeholder="01xxxx" />
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="customerCity">المحافظة / المدينة</Label>
-                      <Input id="customerCity" value={customerCity} onChange={(e) => setCustomerCity(e.target.value)} required placeholder="مثال: القاهرة" />
+                    <div className="grid gap-1">
+                      <Label htmlFor="customerCity" className="text-xs">المدينة</Label>
+                      <Input id="customerCity" value={customerCity} onChange={(e) => setCustomerCity(e.target.value)} required placeholder="القاهرة" className="h-8 text-sm" />
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="customerAddress">العنوان بالتفصيل</Label>
-                      <Input id="customerAddress" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} required placeholder="اسم الشارع، رقم العمارة، رقم الشقة" />
+                    <div className="grid gap-1">
+                      <Label htmlFor="customerAddress" className="text-xs">العنوان</Label>
+                      <Input id="customerAddress" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} required placeholder="الشارع، العمارة" className="h-8 text-sm" />
                     </div>
                   </div>
-                  <div className="grid gap-2 mt-2">
-                    <Label htmlFor="orderNotes">ملاحظات (اختياري)</Label>
-                    <Textarea id="orderNotes" value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="اكتب أي ملاحظات للطلب هنا..." className="resize-none h-10 min-h-[40px]" />
+                  <div className="grid gap-1 mt-1">
+                    <Label htmlFor="orderNotes" className="text-xs">ملاحظات (اختياري)</Label>
+                    <Textarea id="orderNotes" value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="ملاحظات..." className="h-8 min-h-[32px] py-1 resize-none text-sm" />
                   </div>
                 </div>
 
                 {/* Order Details */}
-                <div className="space-y-4 bg-indigo-50/50 dark:bg-indigo-500/5 p-4 rounded-lg border border-indigo-100 dark:border-indigo-500/10">
-                  <h3 className="font-semibold text-base text-indigo-800 dark:text-indigo-300 border-b border-indigo-200 dark:border-indigo-500/20 pb-2 flex items-center gap-2">
+                <div className="space-y-2 bg-indigo-50/50 dark:bg-indigo-500/5 p-3 rounded-lg border border-indigo-100 dark:border-indigo-500/10 flex flex-col h-full">
+                  <h3 className="font-semibold text-sm text-indigo-800 dark:text-indigo-300 border-b border-indigo-200 dark:border-indigo-500/20 pb-1 flex items-center gap-2 shrink-0">
                     📦 المنتجات المطلوبة
                   </h3>
                   
-                  <div className="hidden md:flex gap-2 px-3 pb-1 text-xs font-bold text-gray-500">
+                  <div className="hidden md:flex gap-2 px-2 pb-1 text-[10px] font-bold text-gray-500 shrink-0">
                     <div className="flex-1">المنتج</div>
-                    <div className="w-28 text-center">السعر (ج.م)</div>
+                    <div className="w-24 text-center">السعر</div>
                     <div className="w-20 text-center">الكمية</div>
                     {orderItems.length > 1 && <div className="w-8"></div>}
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 flex-1 overflow-y-auto pr-1 min-h-[100px] max-h-[180px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-indigo-200 [&::-webkit-scrollbar-thumb]:rounded-full">
                     {orderItems.map((item, index) => (
-                      <div key={index} className="flex flex-col md:flex-row gap-2 items-start md:items-center bg-gray-50/80 hover:bg-gray-100 transition-colors p-3 rounded-lg border border-gray-100 relative w-full group">
+                      <div key={index} className="flex flex-col md:flex-row gap-2 items-start md:items-center bg-gray-50/80 hover:bg-gray-100 transition-colors p-2 rounded-lg border border-gray-100 relative w-full group">
                         <div className="flex-1 w-full min-w-0">
                           <ProductSelect
                             value={item.variantId}
@@ -1216,7 +1216,7 @@ export default function OrdersPage() {
                           />
                         </div>
                         <div className="flex w-full md:w-auto gap-2">
-                          <div className="w-full md:w-28">
+                          <div className="w-full md:w-24">
                             <Input 
                               type="number" 
                               min="0" 
@@ -1225,7 +1225,7 @@ export default function OrdersPage() {
                               onFocus={(e) => e.target.select()}
                               required 
                               placeholder="السعر"
-                              className="h-10 px-2 bg-white text-center font-semibold text-gray-900 border-gray-200"
+                              className="h-8 px-2 bg-white text-center text-sm font-semibold text-gray-900 border-gray-200"
                             />
                           </div>
                           <div className="w-full md:w-20">
@@ -1244,7 +1244,7 @@ export default function OrdersPage() {
                               onFocus={(e) => e.target.select()}
                               required 
                               placeholder="الكمية"
-                              className="h-10 px-2 bg-white text-center font-bold text-indigo-700 border-gray-200"
+                              className="h-8 px-2 bg-white text-center text-sm font-bold text-indigo-700 border-gray-200"
                             />
                           </div>
                           
@@ -1254,7 +1254,7 @@ export default function OrdersPage() {
                               variant="ghost" 
                               size="icon" 
                               onClick={() => removeOrderItem(index)}
-                              className="h-10 w-8 text-red-500 hover:text-white hover:bg-red-500 rounded-md transition-colors shrink-0"
+                              className="h-8 w-8 text-red-500 hover:text-white hover:bg-red-500 rounded-md transition-colors shrink-0"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -1269,18 +1269,15 @@ export default function OrdersPage() {
                     variant="outline" 
                     size="sm" 
                     onClick={addOrderItem}
-                    className="w-full border-dashed border-2 border-indigo-300 text-indigo-700 hover:bg-indigo-100 bg-white"
+                    className="w-full border-dashed border border-indigo-300 text-indigo-700 hover:bg-indigo-100 bg-white h-8 text-xs shrink-0"
                   >
-                    <Plus className="w-4 h-4 ml-2" />
+                    <Plus className="w-3 h-3 ml-1" />
                     إضافة منتج آخر
                   </Button>
                   
-                  <div className="pt-4 mt-4 border-t border-blue-200 space-y-4">
-                    <h3 className="font-bold text-lg text-blue-800 flex items-center gap-2">
-                      💰 التفاصيل المالية
-                    </h3>
-                    <div className="grid gap-2">
-                      <Label htmlFor="shippingFee">مصاريف الشحن (ج.م)</Label>
+                  <div className="pt-2 mt-2 border-t border-blue-200 space-y-2 shrink-0">
+                    <div className="flex items-center gap-2 justify-between">
+                      <Label htmlFor="shippingFee" className="text-xs">مصاريف الشحن (ج.م)</Label>
                       <Input 
                         id="shippingFee" 
                         type="number" 
@@ -1288,24 +1285,26 @@ export default function OrdersPage() {
                         value={shippingFee} 
                         onChange={(e) => setShippingFee(e.target.value)} 
                         onFocus={(e) => e.target.select()}
-                        className="h-10 text-lg bg-white"
+                        className="h-8 w-24 text-sm bg-white text-left"
+                        dir="ltr"
                       />
                     </div>
-                    <div className="grid gap-2 pt-2">
-                      <Label htmlFor="totalAmount">الإجمالي (شامل الشحن)</Label>
-                      <div className="h-10 px-3 py-2 bg-white rounded-md border border-gray-200 text-lg font-black text-blue-700 flex items-center justify-end" dir="ltr">
-                        {finalTotalAmount.toLocaleString()} ج.م
+                    <div className="flex items-center gap-2 justify-between bg-indigo-600 text-white p-2 rounded-md shadow-sm">
+                      <span className="font-bold text-xs">الإجمالي (شامل الشحن)</span>
+                      <div className="flex items-center gap-1" dir="ltr">
+                        <span className="text-sm font-black">{finalTotalAmount.toLocaleString()}</span>
+                        <span className="text-[10px] opacity-80">ج.م</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                </div>
-              <DialogFooter className="mt-6 flex gap-2 sm:justify-end">
-                <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
+              </div>
+              <DialogFooter className="mt-2 flex gap-2 sm:justify-end">
+                <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting} className="h-8 text-sm">
                   إلغاء
                 </Button>
-                <Button type="submit" disabled={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                <Button type="submit" disabled={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[120px] h-8 text-sm">
                   {isSubmitting ? "جاري الإضافة..." : "حفظ الطلب"}
                 </Button>
               </DialogFooter>

@@ -211,28 +211,28 @@ export default function ExchangeModal({ open, onOpenChange, order, tenantId, all
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl w-[95vw] max-h-[90vh] overflow-y-auto flex flex-col [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-indigo-900 border-b pb-4 flex items-center gap-2">
-            <RefreshCw className="w-5 h-5" />
+      <DialogContent className="sm:max-w-5xl w-[95vw] max-h-[95vh] !p-4 !gap-2 overflow-y-auto flex flex-col [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" dir="rtl">
+        <DialogHeader className="pb-2 border-b">
+          <DialogTitle className="text-xl font-bold text-indigo-900 flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" />
             <span>إجراء استبدال للطلب #{order?.id?.substring(0,8)}</span>
           </DialogTitle>
-          <DialogDescription className="text-gray-500 mt-2">
+          <DialogDescription className="text-gray-500 text-xs mt-1">
             حدد المنتجات التي سيعيدها العميل، وأضف المنتجات الجديدة لتسوية الفروقات.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSave} className="mt-2 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <form onSubmit={handleSave} className="space-y-3">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               
               {/* Items Section (Right Side - 2/3 width) */}
-              <div className="lg:col-span-2 space-y-6">
+              <div className="lg:col-span-2 space-y-3">
                 
                 {/* Returned Items */}
-                <div className="bg-gray-50 p-4 rounded-lg border shadow-sm">
-                  <h3 className="font-bold text-gray-800 border-b pb-2 mb-3 flex items-center gap-2">
+                <div className="bg-gray-50 p-3 rounded-lg border shadow-sm">
+                  <h3 className="font-bold text-gray-800 border-b pb-1 mb-2 flex items-center gap-2 text-sm">
                     📦 المنتجات المسترجعة (من العميل)
                   </h3>
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {returnedItems.map((item, idx) => (
                       <div key={idx} className="flex flex-col md:flex-row gap-4 items-center bg-white p-3 rounded-lg border border-gray-200">
                         <div className="flex-1">
@@ -320,80 +320,79 @@ export default function ExchangeModal({ open, onOpenChange, order, tenantId, all
                               })()}
                               placeholder="1" 
                               value={item.quantity} 
-                              onChange={e => handleNewItemChange(idx, "quantity", e.target.value, e)}
-                              className="h-8 w-16 text-center border-0 focus-visible:ring-0 px-1 text-sm"
+                              onChange={e => updateNewItem(idx, 'quantity', e.target.value)}
+                              className="h-8 text-center text-sm"
                             />
-                            <span className="text-xs text-gray-500">كمية</span>
                           </div>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeNewItem(idx)} className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full shrink-0">
-                            <Trash2 className="w-4 h-4"/>
-                          </Button>
                         </div>
                       </div>
                     ))}
-                    
-                    <div className="pt-2">
-                      <Button type="button" variant="outline" size="sm" onClick={addNewItem} className="w-full h-10 border-dashed border-2 text-indigo-600 bg-white hover:bg-indigo-50/50">
-                        <Plus className="w-4 h-4 ml-2" /> إضافة منتج بديل
-                      </Button>
-                    </div>
                   </div>
+                  
+                  <Button 
+                    type="button" variant="outline" size="sm" 
+                    onClick={addNewItem} 
+                    className="w-full border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50 h-8 text-sm"
+                  >
+                    <Plus className="w-3 h-3 ml-1" />
+                    إضافة منتج بديل
+                  </Button>
                 </div>
               </div>
 
-              {/* Financials Section (Left Side - 1/3 width) */}
+              {/* Summary Section (Left Side - 1/3 width) */}
               <div className="lg:col-span-1">
-                <div className="bg-gray-50 p-4 rounded-lg border shadow-sm sticky top-0">
-                  <h3 className="font-bold text-gray-800 border-b pb-2 mb-4 flex items-center gap-2">
+                <div className="bg-white p-3 rounded-lg border shadow-sm sticky top-4">
+                  <h3 className="font-bold text-gray-800 border-b pb-1 mb-2 flex items-center gap-2 text-sm">
                     💰 التسوية المالية
                   </h3>
                   
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center text-sm">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-600">إجمالي المرتجعات</span>
                       <span className="font-semibold text-red-600" dir="ltr">- {returnedTotal.toLocaleString()} ج.م</span>
                     </div>
                     
-                    <div className="flex justify-between items-center text-sm">
+                    <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-600">إجمالي البدائل</span>
                       <span className="font-semibold text-green-600" dir="ltr">+ {newTotal.toLocaleString()} ج.م</span>
                     </div>
                     
-                    <div className="flex flex-col gap-2 pt-3 border-t">
-                      <Label className="text-sm text-gray-600">مصاريف شحن الاستبدال</Label>
+                    <div className="flex flex-col gap-1 pt-2 border-t">
+                      <Label className="text-xs text-gray-600">مصاريف شحن الاستبدال</Label>
                       <div className="relative">
                         <Input 
                           type="number" min="0" 
                           value={shippingFee} 
                           onChange={e => setShippingFee(e.target.value)} 
-                          className="w-full h-9 bg-white text-left pr-8" dir="ltr"
+                          className="w-full h-8 bg-white text-left pr-6 text-sm" dir="ltr"
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">ج.م</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">ج.م</span>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="mt-6 pt-4 border-t bg-white p-4 rounded-md border text-center">
-                    <div className="text-sm text-gray-500 mb-1">النتيجة النهائية</div>
-                    <div className="font-bold text-gray-800 mb-2">
-                      {difference > 0 ? "المطلوب سداده من العميل" : difference < 0 ? "المطلوب رده للعميل" : "خالص (لا يوجد فرق)"}
+                  <div className="mt-3 pt-3 border-t bg-gray-50 p-2 rounded-md border text-center">
+                    <div className="text-xs text-gray-500 mb-1">النتيجة النهائية</div>
+                    <div className="font-bold text-gray-800 mb-1 text-sm">
+                      {difference > 0 ? "المطلوب سداده" : difference < 0 ? "المطلوب رده" : "خالص"}
                     </div>
                     <div className="flex items-center justify-center gap-1" dir="ltr">
-                      <span className={`font-bold text-2xl ${difference > 0 ? 'text-indigo-700' : difference < 0 ? 'text-green-600' : 'text-gray-800'}`}>
+                      <span className={`font-bold text-lg ${difference > 0 ? 'text-indigo-700' : difference < 0 ? 'text-green-600' : 'text-gray-800'}`}>
                         {Math.abs(difference).toLocaleString()}
                       </span>
-                      <span className="text-gray-500 font-bold text-sm">ج.م</span>
+                      <span className="text-gray-500 font-bold text-xs">ج.م</span>
                     </div>
                   </div>
                 </div>
               </div>
-              
             </div>
-          <DialogFooter className="mt-6 flex gap-2 sm:justify-end">
-             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+          </div>
+          <DialogFooter className="mt-2 flex gap-2 sm:justify-end">
+             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="h-8 text-sm">
                إلغاء
              </Button>
-             <Button type="submit" disabled={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[150px]">
+             <Button type="submit" disabled={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[120px] h-8 text-sm">
                {isSubmitting ? "جاري الحفظ..." : "تأكيد الاستبدال"}
              </Button>
           </DialogFooter>
